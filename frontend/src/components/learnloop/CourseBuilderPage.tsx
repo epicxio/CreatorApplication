@@ -13,8 +13,22 @@ import ListItemText from '@mui/material/ListItemText';
 import LinkIcon from '@mui/icons-material/Link';
 import InputAdornment from '@mui/material/InputAdornment';
 import VideoCallIcon from '@mui/icons-material/VideoCall';
+import AudioFileIcon from '@mui/icons-material/AudioFile';
 import SvgIcon from '@mui/material/SvgIcon';
-import QuizQuestionEditor, { QuizQuestion } from './QuizQuestionEditor';
+import QuizQuestionEditor from './QuizQuestionEditor';
+import DripContentStep from './DripContentStep';
+import CertificateStep from './CertificateStep';
+
+interface QuizQuestion {
+  id: string;
+  question: string;
+  type: 'single' | 'multiple';
+  options: {
+    id: string;
+    text: string;
+    isCorrect: boolean;
+  }[];
+}
 
 const steps = [
   'Course Details',
@@ -150,8 +164,8 @@ const initialModules = [
     ],
   },
 ];
-// Change lessonTypes to include Live
-const lessonTypes = ['Video', 'Text', 'Quiz', 'Assignment', 'Live'];
+// Change lessonTypes to include Live and Audio
+const lessonTypes = ['Video', 'Text', 'Quiz', 'Assignment', 'Live', 'Audio'];
 
 // Helper for icon mapping
 const lessonTypeIcons: { [key: string]: JSX.Element } = {
@@ -159,7 +173,8 @@ const lessonTypeIcons: { [key: string]: JSX.Element } = {
   Text: <DescriptionIcon sx={{ color: '#00BFFF' }} />, 
   Quiz: <QuizIcon sx={{ color: '#FFD600' }} />, 
   Assignment: <AssignmentTurnedInIcon sx={{ color: '#00FFC6' }} />, 
-  Live: <LiveTvIcon sx={{ color: '#FF6B6B' }} />
+  Live: <LiveTvIcon sx={{ color: '#FF6B6B' }} />,
+  Audio: <AudioFileIcon sx={{ color: '#FF8C00' }} />
 };
 
 // Helper for meeting link icon and label
@@ -221,6 +236,7 @@ const CourseBuilderPage: React.FC = () => {
   const [newLessonDescriptions, setNewLessonDescriptions] = useState<{ [moduleId: string]: string }>({});
   const [newLessonResources, setNewLessonResources] = useState<{ [moduleId: string]: File[] }>({});
   const [newLessonVideoPairs, setNewLessonVideoPairs] = useState<{ [moduleId: string]: { video: File, thumbnail: File|null }[] }>({});
+  const [newLessonAudioFiles, setNewLessonAudioFiles] = useState<{ [moduleId: string]: File[] }>({});
   // 1. Add a new state: const [lessonThumbnails, setLessonThumbnails] = useState<{ [lessonKey: string]: File | null }>({});
   const [lessonThumbnails, setLessonThumbnails] = useState<{ [lessonKey: string]: (File | null)[] }>({});
   // 1. Add state for videoPreviews
@@ -376,65 +392,101 @@ const CourseBuilderPage: React.FC = () => {
   // Add state for resource upload errors
   const [resourceUploadErrors, setResourceUploadErrors] = useState<{ [key: string]: string }>({});
 
-  // Add state for quiz question in the add lesson form
-  const [newQuizQuestion, setNewQuizQuestion] = useState<QuizQuestion>({
+  // Add state for quiz questions in the add lesson form
+  const [newQuizQuestions, setNewQuizQuestions] = useState<QuizQuestion[]>([{
     id: 'q-1',
-    text: '',
+    question: '',
     type: 'single',
     options: [
-      { id: 'opt-1', text: '', isCorrect: false },
-      { id: 'opt-2', text: '', isCorrect: false }
+      { id: 'opt-1', text: 'Option 1', isCorrect: false },
+      { id: 'opt-2', text: 'Option 2', isCorrect: true }
     ],
-    includeNoneOfTheAbove: false,
-    includeAllOfTheAbove: false
-  });
+  }]);
 
   React.useEffect(() => {
     if (!addLessonModuleId) return;
-    if (newLessonInputs[addLessonModuleId]?.type === 'Quiz' && (!newQuizQuestion || !newQuizQuestion.options || newQuizQuestion.options.length === 0)) {
-      setNewQuizQuestion({
+    if (newLessonInputs[addLessonModuleId]?.type === 'Quiz' && (!newQuizQuestions || newQuizQuestions.length === 0)) {
+      setNewQuizQuestions([{
         id: 'q-1',
-        text: '',
+        question: '',
         type: 'single',
         options: [
-          { id: 'opt-1', text: '', isCorrect: false },
-          { id: 'opt-2', text: '', isCorrect: false }
+          { id: 'opt-1', text: 'Option 1', isCorrect: false },
+          { id: 'opt-2', text: 'Option 2', isCorrect: true }
         ],
-        includeNoneOfTheAbove: false,
-        includeAllOfTheAbove: false
-      });
+      }]);
     }
   }, [addLessonModuleId, addLessonModuleId ? newLessonInputs[addLessonModuleId]?.type : undefined]);
 
-  // Add state for quiz question in the edit lesson form
-  const [editQuizQuestion, setEditQuizQuestion] = useState<QuizQuestion>({
+  // Add state for quiz questions in the edit lesson form
+  const [editQuizQuestions, setEditQuizQuestions] = useState<QuizQuestion[]>([{
     id: 'q-1',
-    text: '',
+    question: '',
     type: 'single',
     options: [
-      { id: 'opt-1', text: '', isCorrect: false },
-      { id: 'opt-2', text: '', isCorrect: false }
+      { id: 'opt-1', text: 'Option 1', isCorrect: false },
+      { id: 'opt-2', text: 'Option 2', isCorrect: true }
     ],
-    includeNoneOfTheAbove: false,
-    includeAllOfTheAbove: false
-  });
+  }]);
 
-  // Add useEffect to initialize editQuizQuestion when lessonInput?.type changes to 'Quiz'
+  // Drip Content state
+  const [dripEnabled, setDripEnabled] = useState(false);
+  const [dripMethods, setDripMethods] = useState<Array<{
+    id: string;
+    method: 'immediate' | 'days' | 'date';
+    action?: string | number;
+  }>>([]);
+  const [displayOption, setDisplayOption] = useState<'title' | 'titleAndLessons' | 'hide'>('titleAndLessons');
+  const [hideUnlockDate, setHideUnlockDate] = useState(false);
+  const [sendCommunication, setSendCommunication] = useState(false);
+
+  // Certificate state
+  const [certificateEnabled, setCertificateEnabled] = useState(false);
+  const [selectedTemplate, setSelectedTemplate] = useState('1');
+  const [certificateTitle, setCertificateTitle] = useState('Certificate of Completion');
+  const [certificateDescription, setCertificateDescription] = useState('This is to certify that [Name] has successfully completed the course');
+  const [completionPercentage, setCompletionPercentage] = useState(100);
+  const [logoFile, setLogoFile] = useState<File | null>(null);
+  const [applicationLogoEnabled, setApplicationLogoEnabled] = useState(true); // Default enabled
+  const [signatures, setSignatures] = useState<Array<{
+    id: string;
+    name: string;
+    designation: string;
+    type: 'upload' | 'draw';
+    image?: string;
+    enabled: boolean;
+    isDefault?: boolean;
+  }>>([]);
+
+  // New state variables for creator logo
+  const [creatorLogoFile, setCreatorLogoFile] = useState<File | null>(null);
+
+  // Add useEffect to initialize editQuizQuestions when lessonInput?.type changes to 'Quiz'
   React.useEffect(() => {
-    if (lessonInput?.type === 'Quiz' && (!editQuizQuestion || !editQuizQuestion.options || editQuizQuestion.options.length === 0)) {
-      setEditQuizQuestion({
+    if (lessonInput?.type === 'Quiz' && (!editQuizQuestions || editQuizQuestions.length === 0)) {
+      setEditQuizQuestions([{
         id: 'q-1',
-        text: '',
+        question: '',
         type: 'single',
         options: [
-          { id: 'opt-1', text: '', isCorrect: false },
-          { id: 'opt-2', text: '', isCorrect: false }
+          { id: 'opt-1', text: 'Option 1', isCorrect: false },
+          { id: 'opt-2', text: 'Option 2', isCorrect: true }
         ],
-        includeNoneOfTheAbove: false,
-        includeAllOfTheAbove: false
-      });
+      }]);
     }
   }, [lessonInput?.type]);
+
+  // Initialize drip methods based on modules
+  React.useEffect(() => {
+    if (modules.length > 0) {
+      const initialDripMethods = modules.map(module => ({
+        id: module.title,
+        method: 'immediate' as const,
+        action: undefined
+      }));
+      setDripMethods(initialDripMethods);
+    }
+  }, [modules]);
 
   return (
     <Box sx={{ minHeight: '100vh', width: '100vw', p: 0, m: 0 }}>
@@ -754,7 +806,7 @@ const CourseBuilderPage: React.FC = () => {
                                 minRows={2}
                               />
                               {/* Pre/Post Class Messages */}
-                              {['Video', 'Text', 'Quiz', 'Assignment', 'Live'].includes(newLessonInputs[addLessonModuleId]?.type || '') && (
+                              {['Video', 'Text', 'Quiz', 'Assignment', 'Live', 'Audio'].includes(newLessonInputs[addLessonModuleId]?.type || '') && (
                                 <>
                                   <TextField
                                     size="small"
@@ -778,7 +830,7 @@ const CourseBuilderPage: React.FC = () => {
                               )}
                               {/* Quiz Question Editor */}
                               {newLessonInputs[addLessonModuleId]?.type === 'Quiz' && (
-                                <QuizQuestionEditor value={newQuizQuestion} onChange={setNewQuizQuestion} />
+                                <QuizQuestionEditor value={newQuizQuestions} onChange={setNewQuizQuestions} />
                               )}
                               {/* Resource Upload */}
                               <Button
@@ -937,6 +989,63 @@ const CourseBuilderPage: React.FC = () => {
                                   )}
                                   <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 1 }}>
                                     Max 3 videos. Only video files. Max size 2MB each.
+                                  </Typography>
+                                </>
+                              )}
+                              {/* Audio Upload (if type is Audio) */}
+                              {(newLessonInputs[addLessonModuleId]?.type === 'Audio') && (
+                                <>
+                                  {/* Show uploaded audio files */}
+                                  {(newLessonAudioFiles[addLessonModuleId] || []).map((file, idx) => (
+                                    <Box key={file.name + idx} sx={{ mt: 1 }}>
+                                      <Stack direction="row" alignItems="center" spacing={1}>
+                                        <Chip
+                                          label={file.name}
+                                          sx={{ maxWidth: 200, overflow: 'hidden', textOverflow: 'ellipsis' }}
+                                          onDelete={() => setNewLessonAudioFiles(files => ({
+                                            ...files,
+                                            [addLessonModuleId]: files[addLessonModuleId].filter((_, i) => i !== idx)
+                                          }))}
+                                        />
+                                      </Stack>
+                                      {/* Audio preview */}
+                                      <Box sx={{ mt: 1 }}>
+                                        <audio
+                                          src={URL.createObjectURL(file)}
+                                          controls
+                                          style={{ width: '100%', maxWidth: 300, borderRadius: 6, border: '1px solid #eee' }}
+                                        />
+                                      </Box>
+                                    </Box>
+                                  ))}
+                                  {/* Upload Audio (if less than 5) */}
+                                  {(newLessonAudioFiles[addLessonModuleId]?.length || 0) < 5 && (
+                                    <Button
+                                      variant="outlined"
+                                      component="label"
+                                      size="small"
+                                      sx={{ mt: 1 }}
+                                    >
+                                      Upload Audio
+                                      <input
+                                        type="file"
+                                        hidden
+                                        accept="audio/*"
+                                        onChange={e => {
+                                          const file = e.target.files?.[0];
+                                          if (file) {
+                                            setNewLessonAudioFiles(files => ({
+                                              ...files,
+                                              [addLessonModuleId]: [...(files[addLessonModuleId] || []), file]
+                                            }));
+                                          }
+                                          e.target.value = '';
+                                        }}
+                                      />
+                                    </Button>
+                                  )}
+                                  <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 1 }}>
+                                    Max 5 audio files. Only audio files (MP3, WAV, etc.). Max size 10MB each.
                                   </Typography>
                                 </>
                               )}
@@ -1164,7 +1273,7 @@ const CourseBuilderPage: React.FC = () => {
                                 minRows={2}
                               />
                               {/* Pre/Post Class Messages */}
-                              {['Video', 'Text', 'Quiz', 'Assignment', 'Live'].includes(lessonInput?.type || '') && (
+                              {['Video', 'Text', 'Quiz', 'Assignment', 'Live', 'Audio'].includes(lessonInput?.type || '') && (
                                 <>
                                   <TextField
                                     size="small"
@@ -1311,6 +1420,63 @@ const CourseBuilderPage: React.FC = () => {
                                   sx={{ mr: 1 }}
                                 />
                               )}
+                              {/* Audio Upload (if type is Audio) */}
+                              {(lessonInput?.type === 'Audio') && (
+                                <>
+                                  {/* Show uploaded audio files */}
+                                  {(newLessonAudioFiles[selectedLessonId] || []).map((file, idx) => (
+                                    <Box key={file.name + idx} sx={{ mt: 1 }}>
+                                      <Stack direction="row" alignItems="center" spacing={1}>
+                                        <Chip
+                                          label={file.name}
+                                          sx={{ maxWidth: 200, overflow: 'hidden', textOverflow: 'ellipsis' }}
+                                          onDelete={() => setNewLessonAudioFiles(files => ({
+                                            ...files,
+                                            [selectedLessonId]: files[selectedLessonId].filter((_, i) => i !== idx)
+                                          }))}
+                                        />
+                                      </Stack>
+                                      {/* Audio preview */}
+                                      <Box sx={{ mt: 1 }}>
+                                        <audio
+                                          src={URL.createObjectURL(file)}
+                                          controls
+                                          style={{ width: '100%', maxWidth: 300, borderRadius: 6, border: '1px solid #eee' }}
+                                        />
+                                      </Box>
+                                    </Box>
+                                  ))}
+                                  {/* Upload Audio (if less than 5) */}
+                                  {(newLessonAudioFiles[selectedLessonId]?.length || 0) < 5 && (
+                                    <Button
+                                      variant="outlined"
+                                      component="label"
+                                      size="small"
+                                      sx={{ mt: 1 }}
+                                    >
+                                      Upload Audio
+                                      <input
+                                        type="file"
+                                        hidden
+                                        accept="audio/*"
+                                        onChange={e => {
+                                          const file = e.target.files?.[0];
+                                          if (file) {
+                                            setNewLessonAudioFiles(files => ({
+                                              ...files,
+                                              [selectedLessonId]: [...(files[selectedLessonId] || []), file]
+                                            }));
+                                          }
+                                          e.target.value = '';
+                                        }}
+                                      />
+                                    </Button>
+                                  )}
+                                  <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 1 }}>
+                                    Max 5 audio files. Only audio files (MP3, WAV, etc.). Max size 10MB each.
+                                  </Typography>
+                                </>
+                              )}
                               {/* Live Lesson Specific Fields */}
                               {lessonInput?.type === 'Live' && (
                                 <>
@@ -1428,7 +1594,7 @@ const CourseBuilderPage: React.FC = () => {
                               )}
                               {/* Quiz Question Editor */}
                               {lessonInput?.type === 'Quiz' && (
-                                <QuizQuestionEditor value={editQuizQuestion} onChange={setEditQuizQuestion} />
+                                <QuizQuestionEditor value={editQuizQuestions} onChange={setEditQuizQuestions} />
                               )}
                               <Stack direction="row" spacing={1} justifyContent="flex-end">
                                 <Button size="small" variant="contained" onClick={() => handleEditLesson(modules.findIndex(mod => mod.lessons.some(l => l.id === selectedLessonId)), selectedLessonId, lessonInput?.title || '', lessonInput?.type || lessonTypes[0])}>
@@ -1447,6 +1613,40 @@ const CourseBuilderPage: React.FC = () => {
                         )}
                       </Box>
                     </Box>
+                  ) : activeStep === 2 ? (
+                    <DripContentStep
+                      dripEnabled={dripEnabled}
+                      onDripEnabledChange={setDripEnabled}
+                      dripMethods={dripMethods}
+                      onDripMethodsChange={setDripMethods}
+                      displayOption={displayOption}
+                      onDisplayOptionChange={setDisplayOption}
+                      hideUnlockDate={hideUnlockDate}
+                      onHideUnlockDateChange={setHideUnlockDate}
+                      sendCommunication={sendCommunication}
+                      onSendCommunicationChange={setSendCommunication}
+                    />
+                  ) :                   activeStep === 3 ? (
+                    <CertificateStep
+                      certificateEnabled={certificateEnabled}
+                      onCertificateEnabledChange={setCertificateEnabled}
+                      selectedTemplate={selectedTemplate}
+                      onTemplateChange={setSelectedTemplate}
+                      certificateTitle={certificateTitle}
+                      onCertificateTitleChange={setCertificateTitle}
+                      certificateDescription={certificateDescription}
+                      onCertificateDescriptionChange={setCertificateDescription}
+                      completionPercentage={completionPercentage}
+                      onCompletionPercentageChange={setCompletionPercentage}
+                      logoFile={logoFile}
+                      onLogoChange={setLogoFile}
+                      applicationLogoEnabled={applicationLogoEnabled}
+                      onApplicationLogoEnabledChange={setApplicationLogoEnabled}
+                      signatures={signatures}
+                      onSignaturesChange={setSignatures}
+                      creatorLogoFile={creatorLogoFile}
+                      onCreatorLogoChange={setCreatorLogoFile}
+                    />
                   ) : (
                     <Typography variant="body1" color="text.secondary">
                       [Futuristic {steps[activeStep]} UI coming soon...]
