@@ -7,6 +7,15 @@ export interface CertificateData {
   certificateNumber: string;
   instructorName?: string;
   organizationName?: string;
+  certificateDescription?: string;
+  signBelowText?: string;
+  instructorSignature?: string;
+  deanSignature?: string;
+  courseLogo?: string;
+  creatorLogo?: string;
+  applicationLogo?: string; // Add separate application logo field
+  applicationLogoEnabled?: boolean;
+  sealImage?: string; // Add seal image data URL
 }
 
 export interface CertificateTemplate {
@@ -93,6 +102,7 @@ export class PDFCertificateGenerator {
     this.drawSignatures();
     this.drawSeal();
     this.drawCertificateNumber();
+    this.drawLogos();
     
     return this.doc;
   }
@@ -151,11 +161,11 @@ export class PDFCertificateGenerator {
     const centerX = 148.5;
     const startY = 80;
 
-    // Certificate text
+    // Certificate description (custom text from preview)
     this.doc.setTextColor(this.template.textColor);
     this.doc.setFontSize(12);
     this.doc.setFont(this.template.fontFamily, 'normal');
-    this.doc.text('This is to certify that', centerX, startY, { align: 'center' });
+    this.doc.text(this.data.certificateDescription || 'This is to certify that', centerX, startY, { align: 'center' });
 
     // Student name
     this.doc.setFontSize(18);
@@ -163,11 +173,11 @@ export class PDFCertificateGenerator {
     this.doc.setTextColor(this.template.accentColor);
     this.doc.text(this.data.studentName, centerX, startY + 20, { align: 'center' });
 
-    // Course completion text
+    // Sign below text (custom text from preview)
     this.doc.setFontSize(12);
     this.doc.setFont(this.template.fontFamily, 'normal');
     this.doc.setTextColor(this.template.textColor);
-    this.doc.text('has successfully completed the course', centerX, startY + 35, { align: 'center' });
+    this.doc.text(this.data.signBelowText || 'has successfully completed the course', centerX, startY + 35, { align: 'center' });
 
     // Course name
     this.doc.setFontSize(14);
@@ -187,10 +197,19 @@ export class PDFCertificateGenerator {
     const leftX = 60;
     const rightX = 237;
 
-    // Left signature
+    // Left signature (Instructor)
     this.doc.setDrawColor(this.template.textColor);
     this.doc.setLineWidth(0.5);
     this.doc.line(leftX - 20, startY, leftX + 20, startY);
+
+    // Add signature image if available
+    if (this.data.instructorSignature) {
+      try {
+        this.doc.addImage(this.data.instructorSignature, 'PNG', leftX - 15, startY - 8, 30, 12);
+      } catch (error) {
+        console.warn('Could not add instructor signature image:', error);
+      }
+    }
 
     this.doc.setFontSize(10);
     this.doc.setFont(this.template.fontFamily, 'bold');
@@ -200,10 +219,20 @@ export class PDFCertificateGenerator {
     this.doc.setFontSize(8);
     this.doc.setFont(this.template.fontFamily, 'normal');
     this.doc.setTextColor(this.template.accentColor);
-    this.doc.text('Course Director', leftX, startY + 15, { align: 'center' });
+    this.doc.text('Creator', leftX, startY + 15, { align: 'center' });
 
-    // Right signature
+    // Right signature (Dean)
     this.doc.line(rightX - 20, startY, rightX + 20, startY);
+    
+    // Add signature image if available
+    if (this.data.deanSignature) {
+      try {
+        this.doc.addImage(this.data.deanSignature, 'PNG', rightX - 15, startY - 8, 30, 12);
+      } catch (error) {
+        console.warn('Could not add dean signature image:', error);
+      }
+    }
+
     this.doc.setFontSize(10);
     this.doc.setFont(this.template.fontFamily, 'bold');
     this.doc.setTextColor(this.template.textColor);
@@ -212,28 +241,31 @@ export class PDFCertificateGenerator {
     this.doc.setFontSize(8);
     this.doc.setFont(this.template.fontFamily, 'normal');
     this.doc.setTextColor(this.template.accentColor);
-    this.doc.text('Academic Dean', rightX, startY + 15, { align: 'center' });
+    this.doc.text('CEO, Content Creator App', rightX, startY + 15, { align: 'center' });
   }
 
   private drawSeal(): void {
     if (!this.template.hasSeal) return;
 
     const centerX = 148.5;
-    const centerY = 140;
+    const centerY = 160; // Positioned above the certificate number area
 
-    // Outer circle
-    this.doc.setFillColor(this.template.accentColor);
-    this.doc.circle(centerX, centerY, 15, 'F');
-
-    // Inner circle
-    this.doc.setFillColor('#FFFFFF');
-    this.doc.circle(centerX, centerY, 12, 'F');
-
-    // SEAL text
-    this.doc.setFontSize(8);
-    this.doc.setFont(this.template.fontFamily, 'bold');
-    this.doc.setTextColor(this.template.accentColor);
-    this.doc.text('SEAL', centerX, centerY + 2, { align: 'center' });
+    // Add the actual seal image to the PDF
+    if (this.data.sealImage) {
+      try {
+        // Add seal with larger size
+        this.doc.addImage(this.data.sealImage, 'PNG', centerX - 18, centerY - 18, 36, 36);
+      } catch (error) {
+        console.warn('Could not add seal image to PDF:', error);
+        // Fallback to simple circle if image fails
+        this.doc.setFillColor(this.template.accentColor);
+        this.doc.circle(centerX, centerY, 18, 'F');
+      }
+    } else {
+      // Fallback to simple circle if no seal image provided
+      this.doc.setFillColor(this.template.accentColor);
+      this.doc.circle(centerX, centerY, 18, 'F');
+    }
   }
 
   private drawCertificateNumber(): void {
@@ -241,6 +273,39 @@ export class PDFCertificateGenerator {
     this.doc.setFont('monospace', 'normal');
     this.doc.setTextColor(this.template.accentColor);
     this.doc.text(`Certificate #: ${this.data.certificateNumber}`, 148.5, 190, { align: 'center' });
+  }
+
+  private drawLogos(): void {
+    const centerX = 148.5;
+    const logoY = 25;
+    const logoSize = 15;
+
+    // Draw application logo (left side - top-left corner)
+    if (this.data.applicationLogo) {
+      try {
+        this.doc.addImage(this.data.applicationLogo, 'PNG', 30, logoY, logoSize, logoSize);
+      } catch (error) {
+        console.warn('Could not add application logo image:', error);
+      }
+    }
+
+    // Draw creator logo (center top - above title area)
+    if (this.data.creatorLogo) {
+      try {
+        this.doc.addImage(this.data.creatorLogo, 'PNG', centerX - logoSize/2, logoY - 8, logoSize, logoSize);
+      } catch (error) {
+        console.warn('Could not add creator logo image:', error);
+      }
+    }
+
+    // Draw course logo (right side - top-right corner)
+    if (this.data.courseLogo) {
+      try {
+        this.doc.addImage(this.data.courseLogo, 'PNG', 252, logoY, logoSize, logoSize);
+      } catch (error) {
+        console.warn('Could not add course logo image:', error);
+      }
+    }
   }
 
   download(filename?: string): void {
@@ -256,8 +321,164 @@ export const generateCertificate = (templateId: string, data: CertificateData): 
 };
 
 export const downloadCertificate = (templateId: string, data: CertificateData, filename?: string): void => {
-  const template = certificateTemplates.find(t => t.id === templateId) || certificateTemplates[0];
-  const generator = new PDFCertificateGenerator(template, data);
-  generator.generate();
-  generator.download(filename);
+  // Create a new PDF document
+  const doc = new jsPDF('landscape', 'mm', 'a4');
+  
+  // Set up the page
+  doc.setFillColor('#F5F5DC'); // Light beige background
+  doc.rect(0, 0, 297, 210, 'F');
+  
+  // Draw border (brown border like in preview)
+  doc.setDrawColor('#8B4513');
+  doc.setLineWidth(3);
+  doc.rect(10, 10, 277, 190);
+  
+  const centerX = 148.5;
+  let currentY = 40;
+  
+  // Main title
+  doc.setTextColor('#8B4513');
+  doc.setFontSize(24);
+  doc.setFont('helvetica', 'bold');
+  doc.text(data.courseName || 'Certificate of Achievement', centerX, currentY, { align: 'center' });
+  currentY += 20;
+  
+  // Decorative line
+  doc.setDrawColor('#CD7F32');
+  doc.setLineWidth(1);
+  doc.line(centerX - 40, currentY, centerX + 40, currentY);
+  currentY += 30;
+  
+  // Certificate description
+  doc.setTextColor('#8B4513');
+  doc.setFontSize(12);
+  doc.setFont('helvetica', 'normal');
+  doc.text(data.certificateDescription || 'This is to certify that', centerX, currentY, { align: 'center' });
+  currentY += 20;
+  
+  // Student name
+  doc.setTextColor('#CD7F32');
+  doc.setFontSize(18);
+  doc.setFont('helvetica', 'bold');
+  doc.text(data.studentName, centerX, currentY, { align: 'center' });
+  currentY += 20;
+  
+  // Sign below text
+  doc.setTextColor('#8B4513');
+  doc.setFontSize(12);
+  doc.setFont('helvetica', 'normal');
+  doc.text(data.signBelowText || 'has successfully completed the course', centerX, currentY, { align: 'center' });
+  currentY += 40;
+  
+  // Signatures section
+  const leftX = 60;
+  const rightX = 237;
+  const signatureY = 140;
+  
+  // Left signature
+  doc.setDrawColor('#8B4513');
+  doc.setLineWidth(1);
+  doc.line(leftX - 20, signatureY, leftX + 20, signatureY);
+  
+  // Add instructor signature image if available
+  if (data.instructorSignature) {
+    try {
+      doc.addImage(data.instructorSignature, 'PNG', leftX - 15, signatureY - 8, 30, 12);
+    } catch (error) {
+      console.warn('Could not add instructor signature image:', error);
+    }
+  }
+  
+  doc.setTextColor('#8B4513');
+  doc.setFontSize(10);
+  doc.setFont('helvetica', 'bold');
+  doc.text(data.instructorName || 'Course Instructor', leftX, signatureY + 10, { align: 'center' });
+  
+  doc.setFontSize(8);
+  doc.setFont('helvetica', 'normal');
+  doc.setTextColor('#CD7F32');
+  doc.text('Creator', leftX, signatureY + 15, { align: 'center' });
+  
+  // Right signature
+  doc.line(rightX - 20, signatureY, rightX + 20, signatureY);
+  
+  // Add dean signature image if available
+  if (data.deanSignature) {
+    try {
+      doc.addImage(data.deanSignature, 'PNG', rightX - 15, signatureY - 8, 30, 12);
+    } catch (error) {
+      console.warn('Could not add dean signature image:', error);
+    }
+  }
+  
+  doc.setTextColor('#8B4513');
+  doc.setFontSize(10);
+  doc.setFont('helvetica', 'bold');
+  doc.text(data.organizationName || 'Academic Dean', rightX, signatureY + 10, { align: 'center' });
+  
+  doc.setFontSize(8);
+  doc.setFont('helvetica', 'normal');
+  doc.setTextColor('#CD7F32');
+  doc.text('CEO, Content Creator App', rightX, signatureY + 15, { align: 'center' });
+  
+  // Certificate number
+  doc.setFontSize(8);
+  doc.setFont('monospace', 'normal');
+  doc.setTextColor('#CD7F32');
+  doc.text(`Certificate #: ${data.certificateNumber}`, centerX, 190, { align: 'center' });
+  
+  // Add the actual seal image to the PDF
+  const sealCenterX = 148.5;
+  const sealCenterY = 160; // Positioned above the certificate number area
+  
+  if (data.sealImage) {
+    try {
+      // Add seal with larger size
+      doc.addImage(data.sealImage, 'PNG', sealCenterX - 18, sealCenterY - 18, 36, 36);
+    } catch (error) {
+      console.warn('Could not add seal image to PDF:', error);
+      // Fallback to simple circle if image fails
+      doc.setFillColor('#CD7F32');
+      doc.circle(sealCenterX, sealCenterY, 18, 'F');
+    }
+  } else {
+    // Fallback to simple circle if no seal image provided
+    doc.setFillColor('#CD7F32');
+    doc.circle(sealCenterX, sealCenterY, 18, 'F');
+  }
+  
+  // Draw logos
+  const logoY = 25;
+  const logoSize = 15;
+  
+  // Draw application logo (left side - top-left corner)
+  if (data.applicationLogo) {
+    try {
+      doc.addImage(data.applicationLogo, 'PNG', 30, logoY, logoSize, logoSize);
+    } catch (error) {
+      console.warn('Could not add application logo image:', error);
+    }
+  }
+  
+  // Draw course logo (right side - top-right corner)
+  if (data.courseLogo) {
+    try {
+      doc.addImage(data.courseLogo, 'PNG', 252, logoY, logoSize, logoSize);
+    } catch (error) {
+      console.warn('Could not add course logo image:', error);
+    }
+  }
+  
+  // Draw creator logo (center top - above title area)
+  if (data.creatorLogo) {
+    try {
+      doc.addImage(data.creatorLogo, 'PNG', 148.5 - logoSize/2, logoY - 8, logoSize, logoSize);
+    } catch (error) {
+      console.warn('Could not add creator logo image:', error);
+    }
+  }
+  
+  // Download the PDF
+  const defaultFilename = `certificate_${data.studentName.replace(/\s+/g, '_')}_${Date.now()}.pdf`;
+  doc.save(filename || defaultFilename);
 }; 

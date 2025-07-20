@@ -18,6 +18,9 @@ import SvgIcon from '@mui/material/SvgIcon';
 import QuizQuestionEditor from './QuizQuestionEditor';
 import DripContentStep from './DripContentStep';
 import CertificateStep from './CertificateStep';
+import PaymentDetailsStep from './PaymentDetailsStep';
+import AdditionalDetailsStep from './AdditionalDetailsStep';
+import PreviewPublishStep from './PreviewPublishStep';
 
 interface QuizQuestion {
   id: string;
@@ -298,13 +301,38 @@ const CourseBuilderPage: React.FC = () => {
     return Object.keys(newErrors).length === 0;
   };
 
-  // Save as draft (stub)
-  const handleSaveDraft = () => {
+  // Auto-save functionality
+  const [autoSaveEnabled, setAutoSaveEnabled] = React.useState(true);
+  const [lastSaved, setLastSaved] = React.useState<Date | null>(null);
+
+
+
+  // Auto-save function
+  const handleAutoSave = async () => {
+    try {
+      console.log('Auto-saving course data...');
+      // Simulate API call for auto-save
+      await new Promise(resolve => setTimeout(resolve, 500));
+      setLastSaved(new Date());
+      console.log('Auto-save completed at:', new Date().toLocaleTimeString());
+    } catch (error) {
+      console.error('Auto-save failed:', error);
+    }
+  };
+
+  // Save as draft function
+  const handleSaveDraft = async () => {
     setSaving(true);
-    setTimeout(() => {
+    try {
+      console.log('Saving draft...');
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      setLastSaved(new Date());
+      console.log('Draft saved successfully');
+    } catch (error) {
+      console.error('Save draft failed:', error);
+    } finally {
       setSaving(false);
-      // Show toast/snackbar here if desired
-    }, 1000);
+    }
   };
 
   // Next step
@@ -488,6 +516,65 @@ const CourseBuilderPage: React.FC = () => {
     }
   }, [modules]);
 
+  // Debug activeStep changes
+  React.useEffect(() => {
+    console.log('Active step changed to:', activeStep, 'Step name:', steps[activeStep]);
+  }, [activeStep]);
+
+  // Course data state for auto-save
+  const courseData = React.useMemo(() => ({
+    // Step 0: Course Details
+    title,
+    subtitle,
+    description,
+    category,
+    level,
+    language,
+    tags,
+    visibility,
+    cover,
+    
+    // Step 1: Curriculum
+    modules,
+    
+    // Step 2: Drip Content
+    dripEnabled,
+    dripMethods,
+    displayOption,
+    hideUnlockDate,
+    sendCommunication,
+    
+    // Step 3: Certificate
+    certificateEnabled,
+    selectedTemplate,
+    certificateTitle,
+    certificateDescription,
+    completionPercentage,
+    applicationLogoEnabled,
+    signatures,
+    creatorLogoFile,
+    
+    // Step 4: Payment Details (will be added by PaymentDetailsStep)
+    // Step 5: Additional Details (will be added by AdditionalDetailsStep)
+    // Step 6: Preview & Publish (will be added by PreviewPublishStep)
+  }), [
+    title, subtitle, description, category, level, language, tags, visibility, cover,
+    modules, dripEnabled, dripMethods, displayOption, hideUnlockDate, sendCommunication,
+    certificateEnabled, selectedTemplate, certificateTitle, certificateDescription, 
+    completionPercentage, applicationLogoEnabled, signatures, creatorLogoFile
+  ]);
+
+  // Auto-save every 10 seconds
+  React.useEffect(() => {
+    if (!autoSaveEnabled) return;
+    
+    const autoSaveInterval = setInterval(() => {
+      handleAutoSave();
+    }, 10000); // 10 seconds
+    
+    return () => clearInterval(autoSaveInterval);
+  }, [autoSaveEnabled, courseData]);
+
   return (
     <Box sx={{ minHeight: '100vh', width: '100vw', p: 0, m: 0 }}>
       <AnimatePresence mode="wait">
@@ -574,6 +661,11 @@ const CourseBuilderPage: React.FC = () => {
               </Typography>
             </StepLabelBox>
             <GlassPanel sx={{ width: '100%', minHeight: 220, position: 'relative', boxSizing: 'border-box', marginTop: 0 }}>
+              <Box sx={{ mb: 2, p: 2, bgcolor: 'rgba(108, 99, 255, 0.1)', borderRadius: 2 }}>
+                <Typography variant="body2" color="text.secondary">
+                  Current Step: {activeStep} - {steps[activeStep]}
+                </Typography>
+              </Box>
               <AnimatePresence mode="wait">
                 <motion.div
                   key={activeStep}
@@ -1647,6 +1739,18 @@ const CourseBuilderPage: React.FC = () => {
                       creatorLogoFile={creatorLogoFile}
                       onCreatorLogoChange={setCreatorLogoFile}
                     />
+                  ) : activeStep === 4 ? (
+                    <PaymentDetailsStep />
+                  ) : activeStep === 5 ? (
+                    <>
+                      {console.log('Rendering AdditionalDetailsStep, activeStep:', activeStep)}
+                      <AdditionalDetailsStep lastSaved={lastSaved} />
+                    </>
+                  ) : activeStep === 6 ? (
+                    <>
+                      {console.log('Rendering PreviewPublishStep, activeStep:', activeStep)}
+                      <PreviewPublishStep />
+                    </>
                   ) : (
                     <Typography variant="body1" color="text.secondary">
                       [Futuristic {steps[activeStep]} UI coming soon...]
@@ -1654,7 +1758,26 @@ const CourseBuilderPage: React.FC = () => {
                   )}
                 </motion.div>
               </AnimatePresence>
-              <Stack direction="row" spacing={2} justifyContent="flex-end" mt={4}>
+              {/* Auto-save indicator */}
+              {lastSaved && (
+                <Box sx={{ 
+                  display: 'flex', 
+                  alignItems: 'center', 
+                  justifyContent: 'center', 
+                  mt: 2,
+                  p: 1,
+                  bgcolor: 'rgba(76, 175, 80, 0.1)',
+                  borderRadius: 1,
+                  border: '1px solid rgba(76, 175, 80, 0.2)'
+                }}>
+                  <Typography variant="caption" color="success.main">
+                    💾 Last saved: {lastSaved.toLocaleTimeString()}
+                  </Typography>
+                </Box>
+              )}
+
+              <Stack direction="row" spacing={2} justifyContent="space-between" alignItems="center" mt={4}>
+                {/* Left side - Back button */}
                 <Button
                   variant="outlined"
                   color="secondary"
@@ -1665,12 +1788,54 @@ const CourseBuilderPage: React.FC = () => {
                 >
                   Back
                 </Button>
+
+                {/* Center - Save Draft button */}
+                <Button
+                  variant="outlined"
+                  color="primary"
+                  onClick={handleSaveDraft}
+                  disabled={saving}
+                  sx={{ 
+                    minWidth: 120,
+                    borderColor: '#6C63FF',
+                    color: '#6C63FF',
+                    '&:hover': {
+                      borderColor: '#5A52D5',
+                      backgroundColor: 'rgba(108, 99, 255, 0.08)'
+                    }
+                  }}
+                >
+                  {saving ? 'Saving...' : 'Save Draft'}
+                </Button>
+
+                {/* Right side - Next button */}
                 <Button
                   variant="contained"
                   color="primary"
                   endIcon={<ArrowForward />}
                   disabled={activeStep === steps.length - 1}
-                  onClick={() => setActiveStep((s) => Math.min(steps.length - 1, s + 1))}
+                  onClick={() => {
+                    console.log('Next button clicked, current step:', activeStep);
+                    // Only validate for step 0 (Course Details)
+                    if (activeStep === 0) {
+                      if (validate()) {
+                        setActiveStep((s) => {
+                          const nextStep = Math.min(steps.length - 1, s + 1);
+                          console.log('Moving to step:', nextStep);
+                          return nextStep;
+                        });
+                      } else {
+                        console.log('Validation failed, staying on step:', activeStep);
+                      }
+                    } else {
+                      // For all other steps, allow navigation without validation
+                      setActiveStep((s) => {
+                        const nextStep = Math.min(steps.length - 1, s + 1);
+                        console.log('Moving to step:', nextStep);
+                        return nextStep;
+                      });
+                    }
+                  }}
                   sx={{ minWidth: 120, boxShadow: '0 2px 12px #00FFC633' }}
                 >
                   Next

@@ -54,6 +54,8 @@ import {
   CertificateTemplate as PDFTemplate
 } from '../../utils/pdfCertificateGenerator';
 import creatorLogo from '../../assets/creator-logo.png';
+import sealImage from '../../assets/seal.png';
+import { useAuth } from '../../context/AuthContext';
 
 interface CertificateTemplate {
   id: string;
@@ -108,6 +110,15 @@ const SignatureCanvas: React.FC<{
   const [isDrawing, setIsDrawing] = useState(false);
   const [context, setContext] = useState<CanvasRenderingContext2D | null>(null);
   const [hasDrawing, setHasDrawing] = useState(false);
+
+  // Clear canvas when component mounts (for new signature)
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (canvas && context) {
+      context.clearRect(0, 0, canvas.width, canvas.height);
+      setHasDrawing(false);
+    }
+  }, [context]);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -261,12 +272,38 @@ const CertificateStep: React.FC<CertificateStepProps> = ({
   creatorLogoFile,
   onCreatorLogoChange
 }) => {
+  const { user } = useAuth();
+  const creatorName = user?.name || 'Course Instructor';
   const [activeTab, setActiveTab] = useState(0);
   const [drawSignatureOpen, setDrawSignatureOpen] = useState(false);
   const [currentSignature, setCurrentSignature] = useState<Signature | null>(null);
-  const [completionStatement, setCompletionStatement] = useState('has successfully completed the course');
   const [signBelowText, setSignBelowText] = useState('has successfully completed the course');
   const [studentName] = useState('John Doe'); // This will be dynamic from enrolled student data
+
+  // Initialize default signatures if none exist
+  useEffect(() => {
+    if (signatures.length === 0) {
+      const defaultInstructorSignature: Signature = {
+        id: `instructor-sig-${Date.now()}`,
+        name: creatorName,
+        designation: 'Creator',
+        type: 'upload',
+        enabled: true,
+        isDefault: true
+      };
+      
+      const defaultDeanSignature: Signature = {
+        id: `dean-sig-${Date.now()}`,
+        name: 'Academic Dean',
+        designation: 'CEO, Content Creator App',
+        type: 'upload',
+        enabled: false,
+        isDefault: true
+      };
+      
+      onSignaturesChange([defaultInstructorSignature, defaultDeanSignature]);
+    }
+  }, [signatures.length, creatorName, onSignaturesChange]);
 
   const templates: CertificateTemplate[] = [
     {
@@ -285,7 +322,38 @@ const CertificateStep: React.FC<CertificateStepProps> = ({
       color: '#2563EB',
       visualPreview: { background: '#FFFFFF', border: '2px solid #2563EB', pattern: 'corporate_recognition' }
     },
-    // ... other templates (omitted for brevity)
+    {
+      id: '3',
+      name: 'Minimal Elegance',
+      preview: '✨',
+      category: 'minimal',
+      color: '#6B7280',
+      visualPreview: { background: '#FFFFFF', border: '1px solid #6B7280', pattern: 'minimal_elegance' }
+    },
+    {
+      id: '4',
+      name: 'Premium Gold',
+      preview: '🏆',
+      category: 'premium',
+      color: '#D97706',
+      visualPreview: { background: '#FFFFFF', border: '2px solid #D97706', pattern: 'premium_gold' }
+    },
+    {
+      id: '5',
+      name: 'Modern Gradient',
+      preview: '🎨',
+      category: 'modern',
+      color: '#8B5CF6',
+      visualPreview: { background: '#FFFFFF', border: '2px solid #8B5CF6', pattern: 'modern_gradient' }
+    },
+    {
+      id: '6',
+      name: 'Classic Red',
+      preview: '📋',
+      category: 'classic',
+      color: '#DC2626',
+      visualPreview: { background: '#FFFFFF', border: '2px solid #DC2626', pattern: 'classic_red' }
+    }
   ];
 
   const renderCertificatePreview = (
@@ -377,16 +445,9 @@ const CertificateStep: React.FC<CertificateStepProps> = ({
                 fontSize: `${1.2 * scale}rem`,
                 fontWeight: 700,
                 color: '#8B4513',
-                mb: 1
-              }}>
-                {displayTitle}
-              </Typography>
-              <Typography sx={{
-                fontSize: `${0.8 * scale}rem`,
-                color: '#CD7F32',
                 mb: 2
               }}>
-                {template.name}
+                {displayTitle}
               </Typography>
               <Box sx={{
                 width: '60%',
@@ -424,6 +485,26 @@ const CertificateStep: React.FC<CertificateStepProps> = ({
               }}>
                 {signBelowText}
               </Typography>
+              
+              {/* Certificate Seal */}
+              <Box sx={{
+                position: 'absolute',
+                top: '75%',
+                left: '50%',
+                transform: 'translate(-50%, -50%)',
+                zIndex: 5,
+                opacity: 0.6
+              }}>
+                <img
+                  src={sealImage}
+                  alt="Certificate Seal"
+                  style={{
+                    width: `${100 * scale}px`,
+                    height: `${100 * scale}px`,
+                    objectFit: 'contain'
+                  }}
+                />
+              </Box>
             </Box>
             <Box sx={{
               display: 'flex',
@@ -434,6 +515,19 @@ const CertificateStep: React.FC<CertificateStepProps> = ({
               {/* Creator Signatures */}
               {signatures.slice(0, 2).map((signature, index) => (
                 <Box key={index} sx={{ textAlign: 'center', flex: 1 }}>
+                  {signature?.image && (
+                    <Box sx={{ mb: 1 }}>
+                      <img
+                        src={signature.image}
+                        alt="Signature"
+                        style={{
+                          maxWidth: `${80 * scale}px`,
+                          maxHeight: `${30 * scale}px`,
+                          objectFit: 'contain'
+                        }}
+                      />
+                    </Box>
+                  )}
                   <Box sx={{
                     width: `${60 * scale}px`,
                     height: `${2 * scale}px`,
@@ -446,27 +540,14 @@ const CertificateStep: React.FC<CertificateStepProps> = ({
                     fontWeight: 600,
                     color: '#8B4513'
                   }}>
-                    {signature?.name || `Signature ${index + 1}`}
+                    {signature?.name || (index === 0 ? creatorName : `Signature ${index + 1}`)}
                   </Typography>
                   <Typography sx={{
                     fontSize: `${0.5 * scale}rem`,
                     color: '#CD7F32'
                   }}>
-                    {signature?.designation || 'Designation'}
+                    {signature?.designation || (index === 0 ? 'Creator' : 'Designation')}
                   </Typography>
-                  {signature?.image && (
-                    <Box sx={{ mt: 1 }}>
-                      <img
-                        src={signature.image}
-                        alt="Signature"
-                        style={{
-                          maxWidth: `${80 * scale}px`,
-                          maxHeight: `${30 * scale}px`,
-                          objectFit: 'contain'
-                        }}
-                      />
-                    </Box>
-                  )}
                 </Box>
               ))}
             </Box>
@@ -551,16 +632,9 @@ const CertificateStep: React.FC<CertificateStepProps> = ({
                 fontSize: `${1 * scale}rem`,
                 fontWeight: 700,
                 color: '#1F2937',
-                mb: 1
-              }}>
-                {displayTitle}
-              </Typography>
-              <Typography sx={{
-                fontSize: `${0.7 * scale}rem`,
-                color: '#2563EB',
                 mb: 2
               }}>
-                {template.name}
+                {displayTitle}
               </Typography>
             </Box>
             <Box sx={{
@@ -591,6 +665,26 @@ const CertificateStep: React.FC<CertificateStepProps> = ({
               }}>
                 {signBelowText}
               </Typography>
+              
+              {/* Certificate Seal */}
+              <Box sx={{
+                position: 'absolute',
+                top: '75%',
+                left: '50%',
+                transform: 'translate(-50%, -50%)',
+                zIndex: 5,
+                opacity: 0.6
+              }}>
+                <img
+                  src={sealImage}
+                  alt="Certificate Seal"
+                  style={{
+                    width: `${95 * scale}px`,
+                    height: `${95 * scale}px`,
+                    objectFit: 'contain'
+                  }}
+                />
+              </Box>
             </Box>
             <Box sx={{
               display: 'flex',
@@ -600,6 +694,19 @@ const CertificateStep: React.FC<CertificateStepProps> = ({
             }}>
               {signatures.slice(0, 2).map((signature, index) => (
                 <Box key={index} sx={{ textAlign: 'center', flex: 1 }}>
+                  {signature?.image && (
+                    <Box sx={{ mb: 1 }}>
+                      <img
+                        src={signature.image}
+                        alt="Signature"
+                        style={{
+                          maxWidth: `${70 * scale}px`,
+                          maxHeight: `${25 * scale}px`,
+                          objectFit: 'contain'
+                        }}
+                      />
+                    </Box>
+                  )}
                   <Box sx={{
                     width: `${50 * scale}px`,
                     height: `${1 * scale}px`,
@@ -612,27 +719,367 @@ const CertificateStep: React.FC<CertificateStepProps> = ({
                     fontWeight: 600,
                     color: '#1F2937'
                   }}>
-                    {signature?.name || `Signature ${index + 1}`}
+                    {signature?.name || (index === 0 ? creatorName : `Signature ${index + 1}`)}
                   </Typography>
                   <Typography sx={{
                     fontSize: `${0.4 * scale}rem`,
                     color: '#2563EB'
                   }}>
-                    {signature?.designation || 'Designation'}
+                    {signature?.designation || (index === 0 ? 'Creator' : 'Designation')}
                   </Typography>
+                </Box>
+              ))}
+            </Box>
+          </Box>
+        </Box>
+      );
+    } else if (template.category === 'minimal') {
+      return (
+        <Box sx={{
+          width: '100%',
+          height: '100%',
+          background: '#FFFFFF',
+          border: '1px solid #6B7280',
+          borderRadius: '8px',
+          overflow: 'hidden',
+          position: 'relative',
+          transform: `scale(${scale})`,
+          transformOrigin: 'center',
+          boxShadow: '0 2px 8px rgba(0,0,0,0.1)'
+        }}>
+          <Box sx={{
+            position: 'relative',
+            zIndex: 1,
+            p: 2,
+            height: '100%',
+            display: 'flex',
+            flexDirection: 'column'
+          }}>
+            {/* Application Logo - Top Left */}
+            {applicationLogoEnabled && (
+              <Box sx={{ position: 'absolute', top: 8, left: 8, zIndex: 10 }}>
+                <img
+                  src={creatorLogo}
+                  alt="Application Logo"
+                  style={{
+                    width: `${25 * scale}px`,
+                    height: `${25 * scale}px`,
+                    objectFit: 'contain',
+                    borderRadius: '4px'
+                  }}
+                />
+              </Box>
+            )}
+            {/* Course Logo - Top Right */}
+            {logoFile && (
+              <Box sx={{ position: 'absolute', top: 8, right: 8, zIndex: 10 }}>
+                <img
+                  src={URL.createObjectURL(logoFile)}
+                  alt="Course Logo"
+                  style={{
+                    width: `${30 * scale}px`,
+                    height: `${30 * scale}px`,
+                    objectFit: 'contain',
+                    borderRadius: '4px'
+                  }}
+                />
+              </Box>
+            )}
+            <Box sx={{ textAlign: 'center', mb: 2 }}>
+              {/* Creator Logo - Centered below header */}
+              {creatorLogoFile && (
+                <Box sx={{ display: 'flex', justifyContent: 'center', mb: 2 }}>
+                  <img
+                    src={URL.createObjectURL(creatorLogoFile)}
+                    alt="Creator Logo"
+                    style={{
+                      width: `${40 * scale}px`,
+                      height: `${40 * scale}px`,
+                      objectFit: 'contain',
+                      borderRadius: '4px'
+                    }}
+                  />
+                </Box>
+              )}
+              <Typography sx={{
+                fontSize: `${1 * scale}rem`,
+                fontWeight: 700,
+                color: '#374151',
+                mb: 2
+              }}>
+                {displayTitle}
+              </Typography>
+            </Box>
+            <Box sx={{
+              flex: 1,
+              textAlign: 'center',
+              px: 2,
+              pb: 3
+            }}>
+              <Typography sx={{
+                fontSize: `${0.7 * scale}rem`,
+                color: '#6B7280',
+                mb: 2
+              }}>
+                {displayDescription}
+              </Typography>
+              <Typography sx={{
+                fontSize: `${0.9 * scale}rem`,
+                fontWeight: 700,
+                color: '#374151',
+                mb: 2
+              }}>
+                {studentName}
+              </Typography>
+              <Typography sx={{
+                fontSize: `${0.7 * scale}rem`,
+                color: '#6B7280',
+                mb: 2
+              }}>
+                {signBelowText}
+              </Typography>
+              
+              {/* Certificate Seal */}
+              <Box sx={{
+                position: 'absolute',
+                top: '75%',
+                left: '50%',
+                transform: 'translate(-50%, -50%)',
+                zIndex: 5,
+                opacity: 0.6
+              }}>
+                <img
+                  src={sealImage}
+                  alt="Certificate Seal"
+                  style={{
+                    width: `${90 * scale}px`,
+                    height: `${90 * scale}px`,
+                    objectFit: 'contain'
+                  }}
+                />
+              </Box>
+            </Box>
+            <Box sx={{
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'flex-end',
+              mt: 'auto'
+            }}>
+              {signatures.slice(0, 2).map((signature, index) => (
+                <Box key={index} sx={{ textAlign: 'center', flex: 1 }}>
                   {signature?.image && (
-                    <Box sx={{ mt: 1 }}>
+                    <Box sx={{ mb: 1 }}>
                       <img
                         src={signature.image}
                         alt="Signature"
                         style={{
-                          maxWidth: `${70 * scale}px`,
-                          maxHeight: `${25 * scale}px`,
+                          maxWidth: `${60 * scale}px`,
+                          maxHeight: `${20 * scale}px`,
                           objectFit: 'contain'
                         }}
                       />
                     </Box>
                   )}
+                  <Box sx={{
+                    width: `${40 * scale}px`,
+                    height: `${1 * scale}px`,
+                    background: '#6B7280',
+                    mx: 'auto',
+                    mb: 1
+                  }} />
+                  <Typography sx={{
+                    fontSize: `${0.5 * scale}rem`,
+                    fontWeight: 600,
+                    color: '#374151'
+                  }}>
+                    {signature?.name || (index === 0 ? creatorName : `Signature ${index + 1}`)}
+                  </Typography>
+                  <Typography sx={{
+                    fontSize: `${0.4 * scale}rem`,
+                    color: '#6B7280'
+                  }}>
+                    {signature?.designation || (index === 0 ? 'Creator' : 'Designation')}
+                  </Typography>
+                </Box>
+              ))}
+            </Box>
+          </Box>
+        </Box>
+      );
+    } else if (template.category === 'premium') {
+      return (
+        <Box sx={{
+          width: '100%',
+          height: '100%',
+          background: '#FEF7E0',
+          border: '2px solid #D97706',
+          borderRadius: '8px',
+          overflow: 'hidden',
+          position: 'relative',
+          transform: `scale(${scale})`,
+          transformOrigin: 'center',
+          boxShadow: '0 4px 12px rgba(0,0,0,0.15)'
+        }}>
+          <Box sx={{
+            position: 'relative',
+            zIndex: 1,
+            p: 2,
+            height: '100%',
+            display: 'flex',
+            flexDirection: 'column'
+          }}>
+            {/* Application Logo - Top Left */}
+            {applicationLogoEnabled && (
+              <Box sx={{ position: 'absolute', top: 8, left: 8, zIndex: 10 }}>
+                <img
+                  src={creatorLogo}
+                  alt="Application Logo"
+                  style={{
+                    width: `${25 * scale}px`,
+                    height: `${25 * scale}px`,
+                    objectFit: 'contain',
+                    borderRadius: '4px'
+                  }}
+                />
+              </Box>
+            )}
+            {/* Course Logo - Top Right */}
+            {logoFile && (
+              <Box sx={{ position: 'absolute', top: 8, right: 8, zIndex: 10 }}>
+                <img
+                  src={URL.createObjectURL(logoFile)}
+                  alt="Course Logo"
+                  style={{
+                    width: `${30 * scale}px`,
+                    height: `${30 * scale}px`,
+                    objectFit: 'contain',
+                    borderRadius: '4px'
+                  }}
+                />
+              </Box>
+            )}
+            <Box sx={{ textAlign: 'center', mb: 2 }}>
+              {/* Creator Logo - Centered below header */}
+              {creatorLogoFile && (
+                <Box sx={{ display: 'flex', justifyContent: 'center', mb: 2 }}>
+                  <img
+                    src={URL.createObjectURL(creatorLogoFile)}
+                    alt="Creator Logo"
+                    style={{
+                      width: `${40 * scale}px`,
+                      height: `${40 * scale}px`,
+                      objectFit: 'contain',
+                      borderRadius: '4px'
+                    }}
+                  />
+                </Box>
+              )}
+              <Typography sx={{
+                fontSize: `${1.1 * scale}rem`,
+                fontWeight: 700,
+                color: '#92400E',
+                mb: 2
+              }}>
+                {displayTitle}
+              </Typography>
+              <Box sx={{
+                width: '50%',
+                height: `${2 * scale}px`,
+                background: '#B8860B',
+                mx: 'auto',
+                mb: 2
+              }} />
+            </Box>
+            <Box sx={{
+              flex: 1,
+              textAlign: 'center',
+              px: 2,
+              pb: 3
+            }}>
+              <Typography sx={{
+                fontSize: `${0.7 * scale}rem`,
+                color: '#92400E',
+                mb: 2
+              }}>
+                {displayDescription}
+              </Typography>
+              <Typography sx={{
+                fontSize: `${0.9 * scale}rem`,
+                fontWeight: 700,
+                color: '#B8860B',
+                mb: 2
+              }}>
+                {studentName}
+              </Typography>
+              <Typography sx={{
+                fontSize: `${0.7 * scale}rem`,
+                color: '#92400E',
+                mb: 2
+              }}>
+                {signBelowText}
+              </Typography>
+              
+              {/* Certificate Seal */}
+              <Box sx={{
+                position: 'absolute',
+                top: '75%',
+                left: '50%',
+                transform: 'translate(-50%, -50%)',
+                zIndex: 5,
+                opacity: 0.6
+              }}>
+                <img
+                  src={sealImage}
+                  alt="Certificate Seal"
+                  style={{
+                    width: `${105 * scale}px`,
+                    height: `${105 * scale}px`,
+                    objectFit: 'contain'
+                  }}
+                />
+              </Box>
+            </Box>
+            <Box sx={{
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'flex-end',
+              mt: 'auto'
+            }}>
+              {signatures.slice(0, 2).map((signature, index) => (
+                <Box key={index} sx={{ textAlign: 'center', flex: 1 }}>
+                  {signature?.image && (
+                    <Box sx={{ mb: 1 }}>
+                      <img
+                        src={signature.image}
+                        alt="Signature"
+                        style={{
+                          maxWidth: `${60 * scale}px`,
+                          maxHeight: `${20 * scale}px`,
+                          objectFit: 'contain'
+                        }}
+                      />
+                    </Box>
+                  )}
+                  <Box sx={{
+                    width: `${40 * scale}px`,
+                    height: `${1 * scale}px`,
+                    background: '#B8860B',
+                    mx: 'auto',
+                    mb: 1
+                  }} />
+                  <Typography sx={{
+                    fontSize: `${0.5 * scale}rem`,
+                    fontWeight: 600,
+                    color: '#92400E'
+                  }}>
+                    {signature?.name || (index === 0 ? creatorName : `Signature ${index + 1}`)}
+                  </Typography>
+                  <Typography sx={{
+                    fontSize: `${0.4 * scale}rem`,
+                    color: '#B8860B'
+                  }}>
+                    {signature?.designation || (index === 0 ? 'Creator' : 'Designation')}
+                  </Typography>
                 </Box>
               ))}
             </Box>
@@ -677,8 +1124,8 @@ const CertificateStep: React.FC<CertificateStepProps> = ({
   const addSignature = () => {
     const newSignature: Signature = {
       id: `sig-${Date.now()}`,
-      name: '',
-      designation: '',
+      name: creatorName,
+      designation: 'Creator',
       type: 'upload',
       enabled: true
     };
@@ -716,15 +1163,73 @@ const CertificateStep: React.FC<CertificateStepProps> = ({
   };
 
   const handleDownloadCertificate = () => {
-    const certificateData: CertificateData = {
-      studentName: 'John Doe',
-      courseName: certificateTitle || 'Advanced Course',
-      completionDate: new Date().toLocaleDateString(),
-      certificateNumber: `CERT-${Date.now()}`,
-      instructorName: signatures[0]?.name || 'Course Instructor',
-      organizationName: signatures[1]?.name || 'Academic Dean'
+    const template = templates.find(t => t.id === selectedTemplate);
+    if (!template) return;
+    
+    // Convert seal image to data URL
+    const convertSealToDataURL = (): Promise<string> => {
+      return new Promise((resolve) => {
+        const img = new Image();
+        img.crossOrigin = 'anonymous';
+        img.onload = () => {
+          const canvas = document.createElement('canvas');
+          const ctx = canvas.getContext('2d');
+          canvas.width = img.width;
+          canvas.height = img.height;
+          ctx?.drawImage(img, 0, 0);
+          const dataURL = canvas.toDataURL('image/png');
+          resolve(dataURL);
+        };
+        img.onerror = () => {
+          resolve(''); // Return empty string if image fails to load
+        };
+        img.src = sealImage;
+      });
     };
-    downloadCertificate(selectedTemplate, certificateData);
+
+    // Convert logo files to data URLs
+    const convertLogoToDataURL = (file: File): Promise<string> => {
+      return new Promise((resolve) => {
+        const reader = new FileReader();
+        reader.onload = (e) => {
+          const dataURL = e.target?.result as string;
+          resolve(dataURL);
+        };
+        reader.onerror = () => {
+          resolve(''); // Return empty string if file fails to load
+        };
+        reader.readAsDataURL(file);
+      });
+    };
+    
+    // Convert all images and then download
+    Promise.all([
+      convertSealToDataURL(),
+      logoFile ? convertLogoToDataURL(logoFile) : Promise.resolve(''),
+      creatorLogoFile ? convertLogoToDataURL(creatorLogoFile) : Promise.resolve('')
+    ]).then(([sealDataURL, courseLogoDataURL, creatorLogoDataURL]) => {
+      // Create a comprehensive certificate data object with all the actual preview content
+      const certificateData: CertificateData = {
+        studentName: studentName,
+        courseName: certificateTitle || 'Certificate of Achievement',
+        completionDate: new Date().toLocaleDateString(),
+        certificateNumber: `CERT-${Date.now()}`,
+        instructorName: signatures[0]?.name || creatorName,
+        organizationName: signatures[1]?.name || 'Academic Dean',
+        certificateDescription: certificateDescription || 'This is to certify that',
+        signBelowText: signBelowText || 'has successfully completed the course',
+        instructorSignature: signatures[0]?.image,
+        deanSignature: signatures[1]?.image,
+        courseLogo: courseLogoDataURL || undefined,
+        creatorLogo: creatorLogoDataURL || undefined,
+        applicationLogo: creatorLogo || undefined, // Use actual application logo file
+        applicationLogoEnabled: applicationLogoEnabled,
+        sealImage: sealDataURL // Add the seal image data URL
+      };
+
+      // Use the existing PDF generator with the actual data from the preview
+      downloadCertificate(selectedTemplate, certificateData);
+    });
   };
 
   return (
@@ -876,7 +1381,7 @@ const CertificateStep: React.FC<CertificateStepProps> = ({
                               </Typography>
                             </Box>
                             <Grid container spacing={{ xs: 2, sm: 3 }}>
-                              {templates.slice(0, 6).map((template, index) => (
+                              {templates.map((template, index) => (
                                 <Grid item xs={6} sm={6} md={4} key={template.id}>
                                   <motion.div
                                     initial={{ opacity: 0, y: 20 }}
@@ -1005,15 +1510,18 @@ const CertificateStep: React.FC<CertificateStepProps> = ({
                                       borderRadius: '4px',
                                       p: 3
                                     }}>
-                                      <Box sx={{
+                                                                          <Box 
+                                      data-certificate-preview
+                                      sx={{
                                         width: '85%',
                                         height: '85%',
                                         maxWidth: '500px',
                                         maxHeight: '400px',
                                         position: 'relative'
-                                      }}>
-                                        {renderCertificatePreview(template, displayTitle, displayDescription, 0.85, '400px')}
-                                      </Box>
+                                      }}
+                                    >
+                                      {renderCertificatePreview(template, displayTitle, displayDescription, 0.85, '400px')}
+                                    </Box>
                                     </Box>
                                   </Box>
                                 );
@@ -1065,19 +1573,6 @@ const CertificateStep: React.FC<CertificateStepProps> = ({
                                   multiline
                                   rows={3}
                                   placeholder="e.g., This is to certify that [Name] has successfully completed the course..."
-                                  sx={{
-                                    '& .MuiOutlinedInput-root': {
-                                      '&.Mui-focused .MuiOutlinedInput-notchedOutline': { borderColor: '#6C63FF' }
-                                    }
-                                  }}
-                                />
-                                <TextField
-                                  label="Completion Statement"
-                                  value={completionStatement}
-                                  onChange={(e) => setCompletionStatement(e.target.value)}
-                                  fullWidth
-                                  variant="outlined"
-                                  placeholder="Enter completion statement"
                                   sx={{
                                     '& .MuiOutlinedInput-root': {
                                       '&.Mui-focused .MuiOutlinedInput-notchedOutline': { borderColor: '#6C63FF' }
@@ -1283,29 +1778,29 @@ const CertificateStep: React.FC<CertificateStepProps> = ({
                                   <Stack spacing={2}>
                                     <TextField
                                       label="Instructor Name"
-                                      value={signatures[0]?.name || 'Course Instructor'}
-                                      onChange={(e) => {
-                                        if (signatures[0]) {
-                                          updateSignature(signatures[0].id, { name: e.target.value });
-                                        } else {
-                                          const instructorSignature: Signature = {
-                                            id: 'instructor-sig',
-                                            name: e.target.value,
-                                            designation: 'Course Director',
-                                            type: 'upload',
-                                            enabled: true,
-                                            isDefault: true
-                                          };
-                                          onSignaturesChange([instructorSignature, ...signatures]);
-                                        }
-                                      }}
+                                      value={signatures[0]?.name || creatorName}
+                                                                              onChange={(e) => {
+                                          if (signatures[0]) {
+                                            updateSignature(signatures[0].id, { name: e.target.value });
+                                          } else {
+                                            const instructorSignature: Signature = {
+                                              id: `instructor-sig-${Date.now()}`,
+                                              name: e.target.value,
+                                              designation: 'Creator',
+                                              type: 'upload',
+                                              enabled: true,
+                                              isDefault: true
+                                            };
+                                            onSignaturesChange([instructorSignature, ...signatures]);
+                                          }
+                                        }}
                                       fullWidth
                                       size="small"
                                       placeholder="e.g., Dr. John Smith"
                                     />
                                     <TextField
                                       label="Designation"
-                                      value={signatures[0]?.designation || 'Course Director'}
+                                      value={signatures[0]?.designation || 'Creator'}
                                       onChange={(e) => {
                                         if (signatures[0]) {
                                           updateSignature(signatures[0].id, { designation: e.target.value });
@@ -1313,7 +1808,7 @@ const CertificateStep: React.FC<CertificateStepProps> = ({
                                       }}
                                       fullWidth
                                       size="small"
-                                      placeholder="e.g., Course Director"
+                                      placeholder="e.g., Creator"
                                     />
                                     <Box sx={{ display: 'flex', gap: 1 }}>
                                       <Button
@@ -1333,7 +1828,7 @@ const CertificateStep: React.FC<CertificateStepProps> = ({
                                           type="file"
                                           hidden
                                           accept="image/*"
-                                          onChange={(e) => handleSignatureUpload('instructor-sig', e)}
+                                          onChange={(e) => handleSignatureUpload(signatures[0]?.id || `instructor-sig-${Date.now()}`, e)}
                                         />
                                         Upload
                                       </Button>
@@ -1393,7 +1888,7 @@ const CertificateStep: React.FC<CertificateStepProps> = ({
                                             updateSignature(signatures[1].id, { enabled: e.target.checked });
                                           } else {
                                             const deanSignature: Signature = {
-                                              id: 'dean-sig',
+                                              id: `dean-sig-${Date.now()}`,
                                               name: 'Academic Dean',
                                               designation: 'CEO, Content Creator App',
                                               type: 'upload',
@@ -1454,12 +1949,12 @@ const CertificateStep: React.FC<CertificateStepProps> = ({
                                             }
                                           }}
                                         >
-                                          <input
-                                            type="file"
-                                            hidden
-                                            accept="image/*"
-                                            onChange={(e) => handleSignatureUpload('dean-sig', e)}
-                                          />
+                                                                                  <input
+                                          type="file"
+                                          hidden
+                                          accept="image/*"
+                                          onChange={(e) => handleSignatureUpload(signatures[1]?.id || `dean-sig-${Date.now()}`, e)}
+                                        />
                                           Upload
                                         </Button>
                                         <Button
@@ -1607,9 +2102,33 @@ const CertificateStep: React.FC<CertificateStepProps> = ({
                             </Paper>
                           </Stack>
                           <Box sx={{ flex: 1 }}>
-                            <Typography variant="h6" fontWeight={600} gutterBottom>
-                              Certificate Preview
-                            </Typography>
+                            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+                              <Typography variant="h6" fontWeight={600}>
+                                Certificate Preview
+                              </Typography>
+                              <Button
+                                variant="contained"
+                                startIcon={<DownloadIcon />}
+                                onClick={handleDownloadCertificate}
+                                size="small"
+                                sx={{
+                                  background: 'linear-gradient(135deg, #6C63FF 0%, #8B5CF6 100%)',
+                                  color: 'white',
+                                  px: 2,
+                                  py: 1,
+                                  borderRadius: 2,
+                                  textTransform: 'none',
+                                  fontWeight: 600,
+                                  '&:hover': {
+                                    background: 'linear-gradient(135deg, #5B52E6 0%, #7C4DF5 100%)',
+                                    transform: 'translateY(-1px)',
+                                    boxShadow: '0 4px 12px rgba(108, 99, 255, 0.3)'
+                                  }
+                                }}
+                              >
+                                Download
+                              </Button>
+                            </Box>
                             <Box sx={{
                               width: '100%',
                               height: '600px',
@@ -1634,13 +2153,16 @@ const CertificateStep: React.FC<CertificateStepProps> = ({
                                     alignItems: 'center',
                                     p: 3
                                   }}>
-                                    <Box sx={{
-                                      width: '85%',
-                                      height: '85%',
-                                      maxWidth: '500px',
-                                      maxHeight: '400px',
-                                      position: 'relative'
-                                    }}>
+                                    <Box 
+                                      data-certificate-preview
+                                      sx={{
+                                        width: '85%',
+                                        height: '85%',
+                                        maxWidth: '500px',
+                                        maxHeight: '400px',
+                                        position: 'relative'
+                                      }}
+                                    >
                                       {renderCertificatePreview(template, displayTitle, displayDescription, 0.85, '400px')}
                                     </Box>
                                   </Box>
@@ -1695,38 +2217,28 @@ const CertificateStep: React.FC<CertificateStepProps> = ({
                               </Typography>
                             </Box>
                           </Paper>
-                          <Paper sx={{ p: 3, borderRadius: 3 }}>
-                            <Typography variant="h6" fontWeight={600} gutterBottom>
-                              <DownloadIcon sx={{ mr: 1, verticalAlign: 'middle', color: '#6C63FF' }} />
-                              Generate PDF Certificate
-                            </Typography>
-                            <Typography variant="body2" color="text.secondary" gutterBottom>
-                              Download a sample certificate in PDF format
-                            </Typography>
-                            <Box sx={{ mt: 2 }}>
-                              <Button
-                                variant="contained"
-                                startIcon={<DownloadIcon />}
-                                onClick={handleDownloadCertificate}
-                                sx={{
-                                  background: 'linear-gradient(135deg, #6C63FF 0%, #8B5CF6 100%)',
-                                  color: 'white',
-                                  px: 4,
-                                  py: 1.5,
-                                  borderRadius: 2,
-                                  textTransform: 'none',
-                                  fontWeight: 600,
-                                  '&:hover': {
-                                    background: 'linear-gradient(135deg, #5B52E6 0%, #7C4DF5 100%)',
-                                    transform: 'translateY(-2px)',
-                                    boxShadow: '0 8px 25px rgba(108, 99, 255, 0.3)'
-                                  }
-                                }}
-                              >
-                                Download Sample Certificate
-                              </Button>
-                            </Box>
-                          </Paper>
+                          
+                          {/* Save Settings Button */}
+                          <Stack direction="row" spacing={2} justifyContent="flex-end" mt={4}>
+                            <Button
+                              variant="outlined"
+                              color="secondary"
+                              onClick={() => {
+                                // Save certificate settings
+                                // This will automatically save since we're using controlled components
+                              }}
+                              sx={{
+                                borderColor: '#6C63FF',
+                                color: '#6C63FF',
+                                '&:hover': {
+                                  borderColor: '#5A52D5',
+                                  backgroundColor: 'rgba(108, 99, 255, 0.08)'
+                                }
+                              }}
+                            >
+                              Save Settings
+                            </Button>
+                          </Stack>
                         </Stack>
                       </motion.div>
                     )}
@@ -1752,6 +2264,7 @@ const CertificateStep: React.FC<CertificateStepProps> = ({
         </DialogTitle>
         <DialogContent>
           <SignatureCanvas
+            key={currentSignature?.id || 'default'}
             onSave={handleSaveSignature}
             onCancel={() => setDrawSignatureOpen(false)}
           />
