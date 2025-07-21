@@ -26,7 +26,7 @@ console.log(`--- MONGODB_URI loaded: ${process.env.MONGODB_URI ? '******' : 'NOT
 
 const app = express();
 
-app.use(cors({origin: 'http://localhost:3000',
+app.use(cors({origin: 'https://creator-marketplace.fly.dev',
   credentials: true}));
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true }));

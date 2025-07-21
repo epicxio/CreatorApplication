@@ -247,7 +247,7 @@ const KYCPage: React.FC = () => {
     setLoadError(null);
     try {
       const token = localStorage.getItem('token');
-      const response = await fetch('http://localhost:5001/api/kyc/profile', {
+      const response = await fetch('https://creator-market-backend.fly.dev/api/kyc/profile', {
         headers: {
           'Authorization': token ? `Bearer ${token}` : ''
         }
@@ -261,7 +261,7 @@ const KYCPage: React.FC = () => {
         name: doc.documentName,
         number: doc.documentNumber,
         fileName: doc.fileName,
-        fileUrl: `http://localhost:5001/api/kyc/documents/${doc._id}/download`,
+        fileUrl: `https://creator-market-backend.fly.dev/api/kyc/documents/${doc._id}/download`,
         uploadDate: new Date(doc.createdAt),
         status: doc.status,
         remarks: doc.verificationRemarks || '',
@@ -310,7 +310,7 @@ const KYCPage: React.FC = () => {
         // Add your auth token logic here if needed
         const token = localStorage.getItem('token');
         console.log('Uploading PAN card to backend...');
-        const response = await fetch('http://localhost:5001/api/kyc/upload', {
+        const response = await fetch('https://creator-market-backend.fly.dev/api/kyc/upload', {
           method: 'POST',
           headers: {
             'Authorization': token ? `Bearer ${token}` : ''
@@ -327,7 +327,7 @@ const KYCPage: React.FC = () => {
         // After PAN upload, if Aadhar Card is missing or goToAadharAfterDelete is true, set the flag (navigation will happen in useEffect)
         const updatedDocs = await (async () => {
           const token = localStorage.getItem('token');
-          const response = await fetch('http://localhost:5001/api/kyc/profile', {
+          const response = await fetch('https://creator-market-backend.fly.dev/api/kyc/profile', {
             headers: {
               'Authorization': token ? `Bearer ${token}` : ''
             }
@@ -340,7 +340,7 @@ const KYCPage: React.FC = () => {
             name: doc.documentName,
             number: doc.documentNumber,
             fileName: doc.fileName,
-            fileUrl: `http://localhost:5001/api/kyc/documents/${doc._id}/download`,
+            fileUrl: `https://creator-market-backend.fly.dev/api/kyc/documents/${doc._id}/download`,
             uploadDate: new Date(doc.createdAt),
             status: doc.status,
             remarks: doc.verificationRemarks || '',
@@ -555,7 +555,7 @@ const KYCPage: React.FC = () => {
       formDataObj.append('documentNumber', formData.panCard.number);
       formDataObj.append('document', formData.panCard.file);
       const token = localStorage.getItem('token');
-      const response = await fetch('http://localhost:5001/api/kyc/upload', {
+      const response = await fetch('https://creator-market-backend.fly.dev/api/kyc/upload', {
         method: 'POST',
         headers: {
           'Authorization': token ? `Bearer ${token}` : ''
@@ -571,7 +571,7 @@ const KYCPage: React.FC = () => {
       // After PAN upload, if Aadhar Card is missing or goToAadharAfterDelete is true, set the flag (navigation will happen in useEffect)
       const updatedDocs = await (async () => {
         const token = localStorage.getItem('token');
-        const response = await fetch('http://localhost:5001/api/kyc/profile', {
+        const response = await fetch('https://creator-market-backend.fly.dev/api/kyc/profile', {
           headers: {
             'Authorization': token ? `Bearer ${token}` : ''
           }
@@ -584,7 +584,7 @@ const KYCPage: React.FC = () => {
           name: doc.documentName,
           number: doc.documentNumber,
           fileName: doc.fileName,
-          fileUrl: `http://localhost:5001/api/kyc/documents/${doc._id}/download`,
+          fileUrl: `https://creator-market-backend.fly.dev/api/kyc/documents/${doc._id}/download`,
           uploadDate: new Date(doc.createdAt),
           status: doc.status,
           remarks: doc.verificationRemarks || '',
@@ -613,7 +613,7 @@ const KYCPage: React.FC = () => {
       formDataObj.append('documentNumber', formData.aadharCard.number);
       formDataObj.append('document', formData.aadharCard.file);
       const token = localStorage.getItem('token');
-      const response = await fetch('http://localhost:5001/api/kyc/upload', {
+      const response = await fetch('https://creator-market-backend.fly.dev/api/kyc/upload', {
         method: 'POST',
         headers: {
           'Authorization': token ? `Bearer ${token}` : ''
@@ -653,7 +653,7 @@ const KYCPage: React.FC = () => {
       formDataObj.append('documentNumber', number);
       formDataObj.append('document', file);
       const token = localStorage.getItem('token');
-      const response = await fetch('http://localhost:5001/api/kyc/upload', {
+      const response = await fetch('https://creator-market-backend.fly.dev/api/kyc/upload', {
         method: 'POST',
         headers: {
           'Authorization': token ? `Bearer ${token}` : ''
@@ -1366,7 +1366,7 @@ const KYCPage: React.FC = () => {
                 if (editDialog.file) formDataObj.append('document', editDialog.file);
                 const token = localStorage.getItem('token');
                 const response = await fetch(
-                  `http://localhost:5001/api/kyc/documents/${editDialog.document?.id}`,
+                  `https://creator-market-backend.fly.dev/api/kyc/documents/${editDialog.document?.id}`,
                   {
                     method: 'PUT',
                     headers: {
@@ -1443,7 +1443,7 @@ const KYCPage: React.FC = () => {
               try {
                 const token = localStorage.getItem('token');
                 const response = await fetch(
-                  `http://localhost:5001/api/kyc/documents/${deleteDialog.document?.id}`,
+                  `https://creator-market-backend.fly.dev/api/kyc/documents/${deleteDialog.document?.id}`,
                   {
                     method: 'DELETE',
                     headers: {

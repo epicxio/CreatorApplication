@@ -1,6 +1,6 @@
 const axios = require('axios');
 
-const API_BASE = 'http://localhost:5001/api';
+const API_BASE = 'https://creator-market-backend.fly.dev/api';
 
 async function verifyRoleAssignment() {
   console.log('🔍 Verifying Role Assignment Storage...\n');

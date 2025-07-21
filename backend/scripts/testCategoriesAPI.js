@@ -29,7 +29,7 @@ async function testCategoriesAPI() {
     // Test GET categories endpoint
     console.log('\n--- Testing GET /api/users/:id/categories ---');
     try {
-      const response = await fetch(`http://localhost:5001/api/users/${creatorUser._id}/categories`);
+      const response = await fetch(`https://creator-market-backend.fly.dev/api/users/${creatorUser._id}/categories`);
       const data = await response.json();
       console.log('GET Response:', data);
     } catch (error) {
@@ -46,7 +46,7 @@ async function testCategoriesAPI() {
     ];
 
     try {
-      const response = await fetch(`http://localhost:5001/api/users/${creatorUser._id}/categories`, {
+      const response = await fetch(`https://creator-market-backend.fly.dev/api/users/${creatorUser._id}/categories`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
