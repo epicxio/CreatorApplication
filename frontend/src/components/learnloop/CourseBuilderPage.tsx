@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { Box, Container, Typography, Paper, IconButton, Tooltip, Button, Stack, TextField, MenuItem, Chip, InputLabel, Select, FormControl, OutlinedInput } from '@mui/material';
+import React, { useState, Suspense } from 'react';
+import { Box, Container, Typography, Paper, IconButton, Tooltip, Button, Stack, TextField, MenuItem, Chip, InputLabel, Select, FormControl, OutlinedInput, CircularProgress } from '@mui/material';
 import { styled } from '@mui/system';
 import { CheckCircle, RadioButtonUnchecked, ArrowForward, ArrowBack, ArrowUpward, ArrowDownward } from '@mui/icons-material';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -16,11 +16,15 @@ import VideoCallIcon from '@mui/icons-material/VideoCall';
 import AudioFileIcon from '@mui/icons-material/AudioFile';
 import SvgIcon from '@mui/material/SvgIcon';
 import QuizQuestionEditor from './QuizQuestionEditor';
-import DripContentStep from './DripContentStep';
-import CertificateStep from './CertificateStep';
-import PaymentDetailsStep from './PaymentDetailsStep';
-import AdditionalDetailsStep from './AdditionalDetailsStep';
+// import DripContentStep from './DripContentStep';
+// import CertificateStep from './CertificateStep';
 import PreviewPublishStep from './PreviewPublishStep';
+
+// Lazy load heavy components
+const DripContentStep = React.lazy(() => import('./DripContentStep'));
+const CertificateStep = React.lazy(() => import('./CertificateStep'));
+const PaymentDetailsStep = React.lazy(() => import('./PaymentDetailsStep'));
+const AdditionalDetailsStep = React.lazy(() => import('./AdditionalDetailsStep'));
 
 interface QuizQuestion {
   id: string;
@@ -141,15 +145,7 @@ const FloatingLabel = styled(motion.div)(({ theme }) => ({
   zIndex: 20,
 }));
 
-const backgrounds = [
-  'linear-gradient(120deg, #f8fafc 60%, #e0fff7 100%)',
-  'linear-gradient(120deg, #f8fafc 60%, #e6eaff 100%)',
-  'linear-gradient(120deg, #f8fafc 60%, #ffeaea 100%)',
-  'linear-gradient(120deg, #f8fafc 60%, #fffbe0 100%)',
-  'linear-gradient(120deg, #f8fafc 60%, #e0fff7 100%)',
-  'linear-gradient(120deg, #f8fafc 60%, #e6eaff 100%)',
-  'linear-gradient(120deg, #f8fafc 60%, #e0fff7 100%)',
-];
+
 
 const categories = ['Business', 'Technology', 'Design', 'Marketing', 'Personal Development', 'Health', 'Other'];
 const levels = ['Beginner', 'Intermediate', 'Advanced'];
@@ -290,10 +286,13 @@ const AnimatedSpinner = () => (
   </motion.div>
 );
 
-const CourseBuilderPage: React.FC = () => {
+const CourseBuilderPage: React.FC = React.memo(() => {
   const [activeStep, setActiveStep] = React.useState(0);
+  const [loadingStep, setLoadingStep] = React.useState(false);
   const mainRef = React.useRef<HTMLDivElement>(null);
   const builderRef = React.useRef<HTMLDivElement>(null);
+
+
 
   // Course Details state
   const [title, setTitle] = useState('');
@@ -473,8 +472,7 @@ const CourseBuilderPage: React.FC = () => {
   const handleEditLesson = (modIdx: number, lessonId: string, title: string, type: string) => {
     setModules(modules.map((m, i) =>
       i === modIdx
-        ? { ...m, lessons: m.lessons.map(l => l.id === lessonId ? { ...l, title, type } : l) }
-        : m
+        ? { ...m, lessons: m.lessons.map(l => l.id === lessonId ? { ...l, title, type } : l) } : m
     ));
     setEditingLessonId(null);
   };
@@ -656,8 +654,6 @@ const CourseBuilderPage: React.FC = () => {
     return () => clearInterval(autoSaveInterval);
   }, [autoSaveEnabled, courseData]);
 
-  const [loadingStep, setLoadingStep] = React.useState(false);
-
   // Stepper click handler with loading simulation
   const handleStepClick = (idx: number) => {
     if (activeStep === idx) return;
@@ -665,17 +661,44 @@ const CourseBuilderPage: React.FC = () => {
     setTimeout(() => {
       setActiveStep(idx);
       setLoadingStep(false);
-    }, 700); // Simulate loading for 700ms
+    }, 200); // Reduced from 700ms to 200ms for faster loading
   };
 
+  // Preload adjacent steps for faster navigation
+  React.useEffect(() => {
+    const preloadAdjacentSteps = () => {
+      const adjacentSteps = [activeStep - 1, activeStep + 1].filter(
+        step => step >= 0 && step < steps.length
+      );
+      
+      // Preload heavy components for adjacent steps
+      if (adjacentSteps.includes(2)) { // Drip Content
+        import('./DripContentStep');
+      }
+      if (adjacentSteps.includes(3)) { // Certificate
+        import('./CertificateStep');
+      }
+      if (adjacentSteps.includes(4)) { // Payment Details
+        import('./PaymentDetailsStep');
+      }
+      if (adjacentSteps.includes(5)) { // Additional Details
+        import('./AdditionalDetailsStep');
+      }
+    };
+
+    // Preload after current step is loaded
+    const timer = setTimeout(preloadAdjacentSteps, 100);
+    return () => clearTimeout(timer);
+  }, [activeStep]);
+
   return (
-    <Box sx={{ minHeight: '100vh', width: '100vw', p: 0, m: 0 }}>
+    <Box sx={{ minHeight: '100vh', width: '100%', p: 0, m: 0, overflow: 'hidden' }}>
       {loadingStep && (
         <Box sx={{
           position: 'fixed',
           top: 0,
           left: 0,
-          width: '100vw',
+          width: '100%',
           height: '100vh',
           zIndex: 2000,
           display: 'flex',
@@ -694,9 +717,26 @@ const CourseBuilderPage: React.FC = () => {
           animate={{ opacity: 1, x: 0 }}
           exit={{ opacity: 0, x: -80 }}
           transition={{ duration: 0.6, ease: [0.4, 0.2, 0.6, 1] }}
-          style={{ minHeight: '100vh', width: '100vw', position: 'absolute', top: 0, left: 0, background: backgrounds[activeStep], zIndex: 0 }}
+          style={{ 
+            minHeight: '100vh', 
+            width: '100%', 
+            position: 'absolute', 
+            top: 0, 
+            left: 0, 
+            background: '#ffffff', 
+            zIndex: 0, 
+            overflow: 'hidden',
+            maxWidth: '100%'
+          }}
         >
-          <Container maxWidth="lg" sx={{ py: 6, position: 'relative', minHeight: '100vh' }}>
+          <Container maxWidth="lg" sx={{ 
+            py: 6, 
+            position: 'relative', 
+            minHeight: '100vh', 
+            overflow: 'hidden',
+            maxWidth: '100%',
+            width: '100%'
+          }}>
             <StepperRail>
               {steps.map((label, idx) => (
                 <React.Fragment key={label}>
@@ -771,7 +811,7 @@ const CourseBuilderPage: React.FC = () => {
                 {steps[activeStep]}
               </Typography>
             </StepLabelBox>
-            <GlassPanel sx={{ width: '100%', minHeight: 220, position: 'relative', boxSizing: 'border-box', marginTop: 0 }}>
+            <GlassPanel sx={{ width: '100%', minHeight: 220, position: 'relative', boxSizing: 'border-box', marginTop: 0, overflow: 'hidden' }}>
               <Box sx={{ mb: 2, p: 2, bgcolor: 'rgba(108, 99, 255, 0.1)', borderRadius: 2 }}>
                 <Typography variant="body2" color="text.secondary">
                   Current Step: {activeStep} - {steps[activeStep]}
@@ -784,6 +824,7 @@ const CourseBuilderPage: React.FC = () => {
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, y: -40 }}
                   transition={{ duration: 0.5 }}
+                  style={{ overflow: 'hidden' }}
                 >
                   {activeStep === 0 ? (
                     <Box component="form" noValidate autoComplete="off" sx={{ width: '100%' }}>
@@ -1822,20 +1863,23 @@ const CourseBuilderPage: React.FC = () => {
                         <AnimatedSpinner />
                       </Box>
                     ) : (
-                      <DripContentStep
-                        dripEnabled={dripEnabled}
-                        onDripEnabledChange={setDripEnabled}
-                        dripMethods={dripMethods}
-                        onDripMethodsChange={setDripMethods}
-                        displayOption={displayOption}
-                        onDisplayOptionChange={setDisplayOption}
-                        hideUnlockDate={hideUnlockDate}
-                        onHideUnlockDateChange={setHideUnlockDate}
-                        sendCommunication={sendCommunication}
-                        onSendCommunicationChange={setSendCommunication}
-                      />
+                      <Suspense fallback={<CircularProgress />}>
+                    <DripContentStep
+                      dripEnabled={dripEnabled}
+                      onDripEnabledChange={setDripEnabled}
+                      dripMethods={dripMethods}
+                      onDripMethodsChange={setDripMethods}
+                      displayOption={displayOption}
+                      onDisplayOptionChange={setDisplayOption}
+                      hideUnlockDate={hideUnlockDate}
+                      onHideUnlockDateChange={setHideUnlockDate}
+                      sendCommunication={sendCommunication}
+                      onSendCommunicationChange={setSendCommunication}
+                    />
+                      </Suspense>
                     )
                   ) : activeStep === 3 ? (
+                    <Suspense fallback={<CircularProgress />}>
                     <CertificateStep
                       certificateEnabled={certificateEnabled}
                       onCertificateEnabledChange={setCertificateEnabled}
@@ -1856,13 +1900,15 @@ const CourseBuilderPage: React.FC = () => {
                       creatorLogoFile={creatorLogoFile}
                       onCreatorLogoChange={setCreatorLogoFile}
                     />
+                    </Suspense>
                   ) : activeStep === 4 ? (
+                    <Suspense fallback={<CircularProgress />}>
                     <PaymentDetailsStep />
+                    </Suspense>
                   ) : activeStep === 5 ? (
-                    <>
-                      {console.log('Rendering AdditionalDetailsStep, activeStep:', activeStep)}
+                    <Suspense fallback={<CircularProgress />}>
                       <AdditionalDetailsStep lastSaved={lastSaved} />
-                    </>
+                    </Suspense>
                   ) : activeStep === 6 ? (
                     <>
                       {console.log('Rendering PreviewPublishStep, activeStep:', activeStep)}
@@ -1875,6 +1921,7 @@ const CourseBuilderPage: React.FC = () => {
                   )}
                 </motion.div>
               </AnimatePresence>
+
               {/* Auto-save indicator */}
               {lastSaved && (
                 <Box sx={{ 
@@ -1964,6 +2011,6 @@ const CourseBuilderPage: React.FC = () => {
       </AnimatePresence>
     </Box>
   );
-};
+});
 
 export default CourseBuilderPage; 

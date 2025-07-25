@@ -38,7 +38,7 @@ interface FAQ {
   answer: string;
 }
 
-const AdditionalDetailsStep: React.FC<AdditionalDetailsStepProps> = ({ lastSaved }) => {
+const AdditionalDetailsStep: React.FC<AdditionalDetailsStepProps> = React.memo(({ lastSaved }) => {
   console.log('AdditionalDetailsStep rendered');
   
   // Affiliate Reward State
@@ -73,11 +73,18 @@ const AdditionalDetailsStep: React.FC<AdditionalDetailsStepProps> = ({ lastSaved
   };
 
   return (
-    <Box sx={{ width: '100%' }}>
+    <Box sx={{ 
+      width: '100%',
+      height: '100%',
+      overflow: 'hidden',
+      display: 'flex',
+      flexDirection: 'column'
+    }}>
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.6 }}
+        style={{ flexShrink: 0 }}
       >
         <Box sx={{
           background: 'linear-gradient(135deg, #4CAF50 0%, #8BC34A 100%)',
@@ -130,15 +137,21 @@ const AdditionalDetailsStep: React.FC<AdditionalDetailsStepProps> = ({ lastSaved
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.6, delay: 0.2 }}
+        style={{ 
+          flex: 1,
+          overflow: 'auto',
+          overflowX: 'hidden'
+        }}
       >
         <Card sx={{
           background: 'linear-gradient(145deg, #ffffff 0%, #f8f9ff 100%)',
           borderRadius: 3,
           boxShadow: '0 8px 32px rgba(76, 175, 80, 0.1)',
           border: '1px solid rgba(76, 175, 80, 0.1)',
-          mb: 4
+          mb: 4,
+          height: '100%'
         }}>
-          <CardContent sx={{ p: 4 }}>
+          <CardContent sx={{ p: 4, height: '100%' }}>
             <Stack spacing={3}>
               
               {/* Affiliate Reward Section */}
@@ -342,25 +355,8 @@ const AdditionalDetailsStep: React.FC<AdditionalDetailsStepProps> = ({ lastSaved
         </Card>
       </motion.div>
 
-      {/* Auto-save indicator */}
-      {lastSaved && (
-        <Box sx={{ 
-          display: 'flex', 
-          alignItems: 'center', 
-          justifyContent: 'center', 
-          mt: 2,
-          p: 1,
-          bgcolor: 'rgba(76, 175, 80, 0.1)',
-          borderRadius: 1,
-          border: '1px solid rgba(76, 175, 80, 0.2)'
-        }}>
-          <Typography variant="caption" color="success.main">
-            💾 Last saved: {lastSaved.toLocaleTimeString()}
-          </Typography>
-        </Box>
-      )}
     </Box>
   );
-};
+});
 
 export default AdditionalDetailsStep; 

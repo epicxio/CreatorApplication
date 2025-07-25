@@ -31,6 +31,8 @@ import {
   Dialog as MUIDialog,
   DialogActions as MUIDialogActions,
   DialogContent as MUIDialogContent,
+  TablePagination,
+  Tooltip,
 } from '@mui/material';
 import {
   Add as AddIcon,
@@ -48,6 +50,9 @@ import {
   Visibility as VisibilityIcon,
   Phone as PhoneIcon,
   Lock as LockIcon,
+  ArrowDownward as ArrowDownwardIcon,
+  ArrowUpward as ArrowUpwardIcon,
+  MoreHoriz as MoreHorizIcon,
 } from '@mui/icons-material';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
@@ -83,6 +88,16 @@ interface Creator {
   };
 }
 
+const columns = [
+  { id: 'creatorId', label: 'Creator ID' },
+  { id: 'name', label: 'Name' },
+  { id: 'email', label: 'Email' },
+  { id: 'instagram', label: 'Instagram' },
+  { id: 'facebook', label: 'Facebook' },
+  { id: 'youtube', label: 'YouTube' },
+  { id: 'status', label: 'Status' },
+];
+
 const grades = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '10', '11', '12'];
 const sections = ['A', 'B', 'C', 'D'];
 
@@ -100,6 +115,10 @@ export const Creator: React.FC = () => {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [creatorToDelete, setCreatorToDelete] = useState<Creator | null>(null);
   const [formError, setFormError] = useState<string | null>(null);
+  const [sortBy, setSortBy] = useState('');
+  const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc');
+  const [page, setPage] = useState(0);
+  const [rowsPerPage, setRowsPerPage] = useState(10);
   const navigate = useNavigate();
 
   const roleName = typeof user?.role === 'string'
@@ -114,7 +133,10 @@ export const Creator: React.FC = () => {
       return;
     }
     axios.get(`${BACKEND_URL}/api/users/creators`)
-      .then(res => setCreators(res.data))
+      .then(res => {
+        console.log('Creators data:', res.data);
+        setCreators(res.data);
+      })
       .catch(err => console.error('Failed to fetch creators:', err));
   }, []);
 
@@ -218,112 +240,240 @@ export const Creator: React.FC = () => {
     setPendingCreators(pendingCreators.filter(c => c._id !== id));
   };
 
+  const handleSort = (col: string) => {
+    if (sortBy === col) {
+      setSortDir(sortDir === 'asc' ? 'desc' : 'asc');
+    } else {
+      setSortBy(col);
+      setSortDir('asc');
+    }
+  };
+
+  const handleChangePage = (_: any, newPage: number) => setPage(newPage);
+  const handleChangeRowsPerPage = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setRowsPerPage(parseInt(e.target.value, 10));
+    setPage(0);
+  };
+
   const filteredCreators = creators.filter(creator => {
     const matchesSearch = creator.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      creator.email.toLowerCase().includes(searchTerm.toLowerCase());
+      creator.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (creator.creatorId && creator.creatorId.toLowerCase().includes(searchTerm.toLowerCase()));
     return matchesSearch;
   });
 
+  // Sort filtered creators
+  let sortedCreators = [...filteredCreators];
+  if (sortBy) {
+    sortedCreators.sort((a, b) => {
+      const aVal = a[sortBy as keyof typeof a];
+      const bVal = b[sortBy as keyof typeof b];
+      
+      // Handle undefined values
+      if (aVal === undefined && bVal === undefined) return 0;
+      if (aVal === undefined) return sortDir === 'asc' ? 1 : -1;
+      if (bVal === undefined) return sortDir === 'asc' ? -1 : 1;
+      
+      // Convert to strings for comparison
+      const aStr = String(aVal || '').toLowerCase();
+      const bStr = String(bVal || '').toLowerCase();
+      
+      if (aStr < bStr) return sortDir === 'asc' ? -1 : 1;
+      if (aStr > bStr) return sortDir === 'asc' ? 1 : -1;
+      return 0;
+    });
+  }
+
+  const paginatedCreators = sortedCreators.slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage);
+
   return (
     <Box>
-      <StyledPaper>
-        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
-          <Typography variant="h5" component="h2">
-            Creator Management
-          </Typography>
+      <Paper
+        sx={{
+          mt: 4,
+          p: 3,
+          borderRadius: 5,
+          background: 'rgba(255,255,255,0.15)',
+          boxShadow: '0 8px 32px 0 rgba(31, 38, 135, 0.37)',
+          backdropFilter: 'blur(16px)',
+          border: '1.5px solid rgba(255,255,255,0.18)',
+          overflow: 'hidden',
+          position: 'relative',
+        }}
+        elevation={6}
+      >
+        <Typography variant="h6" sx={{ mb: 2, fontWeight: 700, letterSpacing: 1 }}>
+          Creator Management
+        </Typography>
+        
+        <Box sx={{ display: 'flex', gap: 2, alignItems: 'center', mb: 2 }}>
+          <TextField
+            placeholder="Search by Creator ID, Name, or Email"
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            sx={{ width: 350 }}
+            InputProps={{
+              startAdornment: (
+                <InputAdornment position="start">
+                  <SearchIcon />
+                </InputAdornment>
+              ),
+            }}
+          />
           <Button
             variant="contained"
             startIcon={<AddIcon />}
             onClick={handleAddCreator}
+            sx={{ borderRadius: 3, fontWeight: 700 }}
           >
             Add Creator
           </Button>
         </Box>
 
-        <Grid container spacing={2} sx={{ mb: 3 }}>
-          <Grid item xs={12} md={12}>
-            <TextField
-              fullWidth
-              variant="outlined"
-              placeholder="Search creators..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              InputProps={{
-                startAdornment: <SearchIcon sx={{ mr: 1, color: 'text.secondary' }} />,
-              }}
-            />
-          </Grid>
-        </Grid>
-
         <TableContainer>
           <Table>
             <TableHead>
               <TableRow>
-                <TableCell>Creator ID</TableCell>
-                <TableCell>Profile Pic</TableCell>
-                <TableCell>Name</TableCell>
-                <TableCell>Email</TableCell>
-                <TableCell>Instagram</TableCell>
-                <TableCell>Facebook</TableCell>
-                <TableCell>YouTube</TableCell>
-                <TableCell>Status</TableCell>
+                {columns.map(col => (
+                  <TableCell
+                    key={col.id}
+                    onClick={() => handleSort(col.id)}
+                    sx={{ cursor: 'pointer', userSelect: 'none', fontWeight: 700 }}
+                  >
+                    {col.label}
+                    {sortBy === col.id ? (
+                      sortDir === 'asc' ? <ArrowUpwardIcon fontSize="small" sx={{ ml: 0.5 }} /> : <ArrowDownwardIcon fontSize="small" sx={{ ml: 0.5 }} />
+                    ) : null}
+                  </TableCell>
+                ))}
                 <TableCell>Actions</TableCell>
               </TableRow>
             </TableHead>
             <TableBody>
-              {filteredCreators.map((creator) => (
-                <TableRow key={creator._id || creator.id}>
+              {paginatedCreators.map((creator) => (
+                <TableRow key={creator._id || creator.id} hover sx={{ transition: 'all 0.2s', '&:hover': { background: 'rgba(108,99,255,0.08)' } }}>
                   <TableCell>{creator.creatorId || '-'}</TableCell>
                   <TableCell>
-                    {creator.profilePic ? (
-                      <img
-                        src={creator.profilePic}
-                        alt={creator.name}
-                        style={{ width: '50px', height: '50px', borderRadius: '50%' }}
-                        onError={(e) => {
-                          e.currentTarget.onerror = null;
-                          e.currentTarget.src = '';
-                        }}
-                      />
-                    ) : (
-                      <Avatar sx={{ width: 50, height: 50 }}>
-                        {creator.name.split(' ').map(n => n[0]).join('')}
-                      </Avatar>
-                    )}
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                      {creator.profilePic ? (
+                        <img
+                          src={creator.profilePic}
+                          alt={creator.name}
+                          style={{ width: '32px', height: '32px', borderRadius: '50%' }}
+                          onError={(e) => {
+                            e.currentTarget.onerror = null;
+                            e.currentTarget.src = '';
+                          }}
+                        />
+                      ) : (
+                        <Avatar sx={{ width: 32, height: 32, bgcolor: 'primary.main', fontWeight: 700 }}>
+                          {creator.name.split(' ').map(n => n[0]).join('')}
+                        </Avatar>
+                      )}
+                      <Typography fontWeight={600}>{creator.name}</Typography>
+                    </Box>
                   </TableCell>
-                  <TableCell>{creator.name}</TableCell>
                   <TableCell>{creator.email}</TableCell>
-                  <TableCell>{creator.socialMedia?.instagram || creator.instagram || ''}</TableCell>
-                  <TableCell>{creator.socialMedia?.facebook || creator.facebook || ''}</TableCell>
-                  <TableCell>{creator.socialMedia?.youtube || creator.youtube || ''}</TableCell>
+                  <TableCell>
+                    <Tooltip title={creator.socialMedia?.instagram || creator.instagram || 'No Instagram'}>
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                        <InstagramIcon sx={{ color: '#E1306C', fontSize: 20 }} />
+                        <Typography variant="body2" sx={{ maxWidth: 100, overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                          {creator.socialMedia?.instagram || creator.instagram || '-'}
+                        </Typography>
+                      </Box>
+                    </Tooltip>
+                  </TableCell>
+                  <TableCell>
+                    <Tooltip title={creator.socialMedia?.facebook || creator.facebook || 'No Facebook'}>
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                        <FacebookIcon sx={{ color: '#1877F3', fontSize: 20 }} />
+                        <Typography variant="body2" sx={{ maxWidth: 100, overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                          {creator.socialMedia?.facebook || creator.facebook || '-'}
+                        </Typography>
+                      </Box>
+                    </Tooltip>
+                  </TableCell>
+                  <TableCell>
+                    <Tooltip title={creator.socialMedia?.youtube || creator.youtube || 'No YouTube'}>
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                        <YouTubeIcon sx={{ color: '#FF0000', fontSize: 20 }} />
+                        <Typography variant="body2" sx={{ maxWidth: 100, overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                          {creator.socialMedia?.youtube || creator.youtube || '-'}
+                        </Typography>
+                      </Box>
+                    </Tooltip>
+                  </TableCell>
                   <TableCell>
                     <Chip
                       label={creator.status}
-                      color={creator.status === 'active' ? 'success' : 'default'}
+                      color={creator.status === 'active' ? 'success' : creator.status === 'pending' ? 'warning' : 'error'}
                       size="small"
+                      sx={{ fontWeight: 700 }}
                     />
                   </TableCell>
                   <TableCell>
-                    <IconButton onClick={() => navigate(`/creators/${creator.id}`)} size="small" color="info">
-                      <VisibilityIcon />
-                    </IconButton>
-                    <IconButton onClick={() => handleEditCreator(creator)} size="small">
-                      <EditIcon />
-                    </IconButton>
-                    <IconButton onClick={() => handleDeleteCreator(creator.id)} size="small">
-                      <DeleteIcon />
-                    </IconButton>
+                    <Box sx={{ display: 'flex', gap: 1 }}>
+                      <Tooltip title="View Details">
+                        <IconButton 
+                          onClick={() => {
+                            const creatorId = creator._id || creator.id;
+                            console.log('Navigating to creator:', creatorId, 'Creator object:', creator);
+                            navigate(`/creators/${creatorId}`);
+                          }} 
+                          size="small" 
+                          color="info"
+                        >
+                          <VisibilityIcon />
+                        </IconButton>
+                      </Tooltip>
+                      <Tooltip title="Edit Creator">
+                        <IconButton onClick={() => handleEditCreator(creator)} size="small" color="primary">
+                          <EditIcon />
+                        </IconButton>
+                      </Tooltip>
+                      <Tooltip title="Delete Creator">
+                        <IconButton onClick={() => handleDeleteCreator(creator.id)} size="small" color="error">
+                          <DeleteIcon />
+                        </IconButton>
+                      </Tooltip>
+                    </Box>
                   </TableCell>
                 </TableRow>
               ))}
             </TableBody>
           </Table>
         </TableContainer>
-      </StyledPaper>
+        
+        <TablePagination
+          component="div"
+          count={filteredCreators.length}
+          page={page}
+          onPageChange={handleChangePage}
+          rowsPerPage={rowsPerPage}
+          onRowsPerPageChange={handleChangeRowsPerPage}
+          rowsPerPageOptions={[5, 10, 25]}
+        />
+      </Paper>
 
       {(user && roleName.replace(/\s/g, '').toLowerCase() === 'superadmin') && (
-        <StyledPaper>
-          <Typography variant="h6" sx={{ mb: 2 }}>Pending Creator Requests</Typography>
+        <Paper
+          sx={{
+            mt: 4,
+            p: 3,
+            borderRadius: 5,
+            background: 'rgba(255,255,255,0.15)',
+            boxShadow: '0 8px 32px 0 rgba(31, 38, 135, 0.37)',
+            backdropFilter: 'blur(16px)',
+            border: '1.5px solid rgba(255,255,255,0.18)',
+            overflow: 'hidden',
+            position: 'relative',
+          }}
+          elevation={6}
+        >
+          <Typography variant="h6" sx={{ mb: 2, fontWeight: 700, letterSpacing: 1 }}>
+            Pending Creator Requests
+          </Typography>
           {pendingLoading ? (
             <Typography>Loading...</Typography>
           ) : pendingError ? (
@@ -335,25 +485,43 @@ export const Creator: React.FC = () => {
               <Table>
                 <TableHead>
                   <TableRow>
-                    <TableCell>Name</TableCell>
-                    <TableCell>Email</TableCell>
-                    <TableCell>Instagram</TableCell>
-                    <TableCell>Facebook</TableCell>
-                    <TableCell>YouTube</TableCell>
-                    <TableCell>Actions</TableCell>
+                    <TableCell sx={{ fontWeight: 700 }}>Name</TableCell>
+                    <TableCell sx={{ fontWeight: 700 }}>Email</TableCell>
+                    <TableCell sx={{ fontWeight: 700 }}>Instagram</TableCell>
+                    <TableCell sx={{ fontWeight: 700 }}>Facebook</TableCell>
+                    <TableCell sx={{ fontWeight: 700 }}>YouTube</TableCell>
+                    <TableCell sx={{ fontWeight: 700 }}>Actions</TableCell>
                   </TableRow>
                 </TableHead>
                 <TableBody>
                   {pendingCreators.map((creator) => (
-                    <TableRow key={creator._id}>
+                    <TableRow key={creator._id} hover sx={{ transition: 'all 0.2s', '&:hover': { background: 'rgba(108,99,255,0.08)' } }}>
                       <TableCell>{creator.name}</TableCell>
                       <TableCell>{creator.email}</TableCell>
                       <TableCell>{creator.socialMedia?.instagram || creator.instagram || ''}</TableCell>
                       <TableCell>{creator.socialMedia?.facebook || creator.facebook || ''}</TableCell>
                       <TableCell>{creator.socialMedia?.youtube || creator.youtube || ''}</TableCell>
                       <TableCell>
-                        <Button color="success" variant="contained" size="small" sx={{ mr: 1 }} onClick={() => handleApprove(creator._id!)}>Approve</Button>
-                        <Button color="error" variant="contained" size="small" onClick={() => handleReject(creator._id!)}>Reject</Button>
+                        <Box sx={{ display: 'flex', gap: 1 }}>
+                          <Button 
+                            color="success" 
+                            variant="contained" 
+                            size="small" 
+                            onClick={() => handleApprove(creator._id!)}
+                            sx={{ borderRadius: 3, fontWeight: 700 }}
+                          >
+                            Approve
+                          </Button>
+                          <Button 
+                            color="error" 
+                            variant="contained" 
+                            size="small" 
+                            onClick={() => handleReject(creator._id!)}
+                            sx={{ borderRadius: 3, fontWeight: 700 }}
+                          >
+                            Reject
+                          </Button>
+                        </Box>
                       </TableCell>
                     </TableRow>
                   ))}
@@ -361,7 +529,7 @@ export const Creator: React.FC = () => {
               </Table>
             </TableContainer>
           )}
-        </StyledPaper>
+        </Paper>
       )}
 
       <MUIDialog open={deleteDialogOpen} onClose={() => setDeleteDialogOpen(false)} maxWidth="xs" fullWidth>

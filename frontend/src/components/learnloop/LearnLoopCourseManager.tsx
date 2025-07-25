@@ -55,7 +55,7 @@ const accessLabel = (access: Course['access']) => {
 };
 
 const sortableColumns = [
-  'name', 'createdAt', 'type', 'enrollments', 'completionRate', 'status', 'lastUpdated', 'visibility', 'listedPrice', 'sellingPrice'
+  'name', 'createdAt', 'type', 'enrollments', 'completionRate', 'status', 'lastUpdated', 'visibility', 'features', 'listedPrice', 'sellingPrice'
 ];
 
 const columnLabels: Record<string, string> = {
@@ -68,10 +68,7 @@ const columnLabels: Record<string, string> = {
   status: 'Status',
   lastUpdated: 'Last Updated',
   visibility: 'Visibility',
-  certificateEnabled: 'Certificate Enabled',
-  dripEnabled: 'Drip Enabled',
-  installmentsOn: 'Installments On?',
-  affiliateActive: 'Affiliate Active?',
+  features: 'Features',
   listedPrice: 'Listed Price',
   sellingPrice: 'Selling Price',
   actions: 'Actions',
@@ -265,7 +262,7 @@ const LearnLoopCourseManager: React.FC = () => {
         <Table>
           <TableHead>
             <TableRow>
-              {['name', 'createdAt', 'type', 'access', 'enrollments', 'completionRate', 'status', 'lastUpdated', 'visibility', 'certificateEnabled', 'dripEnabled', 'installmentsOn', 'affiliateActive', 'listedPrice', 'sellingPrice', 'actions'].map((col) => (
+              {['name', 'createdAt', 'type', 'access', 'enrollments', 'completionRate', 'status', 'lastUpdated', 'visibility', 'features', 'actions'].map((col) => (
                 <TableCell key={col}>
                   {sortableColumns.includes(col) ? (
                     <TableSortLabel
@@ -286,11 +283,11 @@ const LearnLoopCourseManager: React.FC = () => {
           <TableBody>
             {loading ? (
               <TableRow>
-                <TableCell colSpan={16} align="center">Loading...</TableCell>
+                <TableCell colSpan={11} align="center">Loading...</TableCell>
               </TableRow>
             ) : filteredCourses.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={16} align="center">No courses found.</TableCell>
+                <TableCell colSpan={11} align="center">No courses found.</TableCell>
               </TableRow>
             ) : (
               sortedCourses.slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage).map((course) => (
@@ -312,12 +309,30 @@ const LearnLoopCourseManager: React.FC = () => {
                       <>{visibilityIcons[course.visibility] || <Lock fontSize="small" color="disabled" />}</>
                     </Tooltip>
                   </TableCell>
-                  <TableCell>{course.certificateEnabled ? <CheckCircle color="success" fontSize="small" /> : <Close color="disabled" fontSize="small" />}</TableCell>
-                  <TableCell>{course.dripEnabled ? <CheckCircle color="success" fontSize="small" /> : <Close color="disabled" fontSize="small" />}</TableCell>
-                  <TableCell>{course.installmentsOn ? <CheckCircle color="success" fontSize="small" /> : <Close color="disabled" fontSize="small" />}</TableCell>
-                  <TableCell>{course.affiliateActive ? <CheckCircle color="success" fontSize="small" /> : <Close color="disabled" fontSize="small" />}</TableCell>
-                  <TableCell>{`₹${course.listedPrice?.INR ?? '-'} / $${course.listedPrice?.USD ?? '-'} / €${course.listedPrice?.EUR ?? '-'}`}</TableCell>
-                  <TableCell>{`₹${course.sellingPrice?.INR ?? '-'} / $${course.sellingPrice?.USD ?? '-'} / €${course.sellingPrice?.EUR ?? '-'}`}</TableCell>
+                  <TableCell>
+                    <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
+                      <Tooltip title="Certificate Enabled">
+                        <Box sx={{ color: course.certificateEnabled ? 'success.main' : 'text.disabled' }}>
+                          <CheckCircle fontSize="small" />
+                        </Box>
+                      </Tooltip>
+                      <Tooltip title="Drip Enabled">
+                        <Box sx={{ color: course.dripEnabled ? 'success.main' : 'text.disabled' }}>
+                          <CheckCircle fontSize="small" />
+                        </Box>
+                      </Tooltip>
+                      <Tooltip title="Installments On">
+                        <Box sx={{ color: course.installmentsOn ? 'success.main' : 'text.disabled' }}>
+                          <CheckCircle fontSize="small" />
+                        </Box>
+                      </Tooltip>
+                      <Tooltip title="Affiliate Active">
+                        <Box sx={{ color: course.affiliateActive ? 'success.main' : 'text.disabled' }}>
+                          <CheckCircle fontSize="small" />
+                        </Box>
+                      </Tooltip>
+                    </Box>
+                  </TableCell>
                   <TableCell>
                     <IconButton onClick={e => handleMenuOpen(e, course.id)}>
                       <MoreVert />

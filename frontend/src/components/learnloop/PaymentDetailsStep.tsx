@@ -29,7 +29,7 @@ interface PaymentDetailsStepProps {
   // Add props as needed for payment configuration
 }
 
-const PaymentDetailsStep: React.FC<PaymentDetailsStepProps> = () => {
+const PaymentDetailsStep: React.FC<PaymentDetailsStepProps> = React.memo(() => {
   const [pricingMode, setPricingMode] = React.useState<'global' | 'currency-specific'>('global');
   const [globalPricingEnabled, setGlobalPricingEnabled] = React.useState(true);
   const [currencySpecificPricingEnabled, setCurrencySpecificPricingEnabled] = React.useState(false);
@@ -54,18 +54,17 @@ const PaymentDetailsStep: React.FC<PaymentDetailsStepProps> = () => {
     'INR': true
   });
 
-  // Universal payment methods for Global Pricing
-  const universalPaymentMethods: { [key: string]: boolean } = {
+  // Memoize expensive data structures
+  const universalPaymentMethods = React.useMemo(() => ({
     'Credit/Debit Cards': true,
     'PayPal': true,
     'Stripe': true,
     'Apple Pay': true,
     'Google Pay': true,
     'Bank Transfer': true
-  };
+  }), []);
 
-  // Payment methods by currency
-  const paymentMethodsByCurrency: { [key: string]: { [key: string]: boolean } } = {
+  const paymentMethodsByCurrency = React.useMemo((): { [key: string]: { [key: string]: boolean } } => ({
     'USD': {
       'Credit/Debit Cards': true,
       'PayPal': true,
@@ -98,10 +97,9 @@ const PaymentDetailsStep: React.FC<PaymentDetailsStepProps> = () => {
       'Razorpay': true,
       'Net Banking': true,
       'PayPal': false,
-      'Apple Pay': false,
       'Google Pay': true
     }
-  };
+  }), []);
 
   const [enabledUniversalPaymentMethods, setEnabledUniversalPaymentMethods] = React.useState<{ [key: string]: boolean }>({
     'Credit/Debit Cards': true,
@@ -231,7 +229,10 @@ const PaymentDetailsStep: React.FC<PaymentDetailsStepProps> = () => {
     // Initialize payment methods for each currency
     Object.keys(enabledCurrencies).forEach(currencyCode => {
       if (enabledCurrencies[currencyCode]) {
-        newPaymentMethods[currencyCode] = { ...paymentMethodsByCurrency[currencyCode] };
+        const methods = paymentMethodsByCurrency[currencyCode];
+        if (methods) {
+          newPaymentMethods[currencyCode] = { ...methods };
+        }
       }
     });
     
@@ -1004,6 +1005,6 @@ const PaymentDetailsStep: React.FC<PaymentDetailsStepProps> = () => {
       </motion.div>
     </Box>
   );
-};
+});
 
 export default PaymentDetailsStep; 

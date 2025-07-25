@@ -203,11 +203,18 @@ const PreviewPublishStep: React.FC<PreviewPublishStepProps> = () => {
   };
 
   return (
-    <Box sx={{ width: '100%' }}>
+    <Box sx={{ 
+      width: '100%',
+      height: '100%',
+      overflow: 'hidden',
+      display: 'flex',
+      flexDirection: 'column'
+    }}>
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.6 }}
+        style={{ flexShrink: 0 }}
       >
         <Box sx={{
           background: 'linear-gradient(135deg, #6C63FF 0%, #00FFC6 100%)',
@@ -260,15 +267,21 @@ const PreviewPublishStep: React.FC<PreviewPublishStepProps> = () => {
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.6, delay: 0.2 }}
+        style={{ 
+          flex: 1,
+          overflow: 'auto',
+          overflowX: 'hidden'
+        }}
       >
         <Card sx={{
           background: 'linear-gradient(145deg, #ffffff 0%, #f8f9ff 100%)',
           borderRadius: 3,
           boxShadow: '0 8px 32px rgba(108, 99, 255, 0.1)',
           border: '1px solid rgba(108, 99, 255, 0.1)',
-          mb: 4
+          mb: 4,
+          height: '100%'
         }}>
-          <CardContent sx={{ p: 4 }}>
+          <CardContent sx={{ p: 4, height: '100%' }}>
             <Stack spacing={4}>
               
               {/* Course Overview */}

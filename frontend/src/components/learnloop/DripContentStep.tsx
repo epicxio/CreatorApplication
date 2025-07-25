@@ -55,7 +55,7 @@ interface DripContentStepProps {
   onSendCommunicationChange: (send: boolean) => void;
 }
 
-const DripContentStep: React.FC<DripContentStepProps> = ({
+const DripContentStep: React.FC<DripContentStepProps> = React.memo(({
   dripEnabled,
   onDripEnabledChange,
   dripMethods,
@@ -69,39 +69,44 @@ const DripContentStep: React.FC<DripContentStepProps> = ({
 }) => {
   const [selectedDate, setSelectedDate] = useState<string>('');
 
-  const handleDripMethodChange = (moduleId: string, method: 'immediate' | 'days' | 'date') => {
+  // Memoize expensive computations
+  const methodIcons = React.useMemo(() => ({
+    immediate: <TrendingUpIcon />,
+    days: <ScheduleIcon />,
+    date: <CalendarIcon />,
+    default: <TimelineIcon />
+  }), []);
+
+  const methodColors = React.useMemo(() => ({
+    immediate: '#00FFC6',
+    days: '#FFD600',
+    date: '#FF6B6B',
+    default: '#6C63FF'
+  }), []);
+
+  const handleDripMethodChange = React.useCallback((moduleId: string, method: 'immediate' | 'days' | 'date') => {
     const updatedMethods = dripMethods.map(m => 
       m.id === moduleId 
         ? { ...m, method, action: method === 'immediate' ? undefined : method === 'days' ? 1 : '' }
         : m
     );
     onDripMethodsChange(updatedMethods);
-  };
+  }, [dripMethods, onDripMethodsChange]);
 
-  const handleActionChange = (moduleId: string, action: string | number) => {
+  const handleActionChange = React.useCallback((moduleId: string, action: string | number) => {
     const updatedMethods = dripMethods.map(m => 
       m.id === moduleId ? { ...m, action } : m
     );
     onDripMethodsChange(updatedMethods);
-  };
+  }, [dripMethods, onDripMethodsChange]);
 
-  const getMethodIcon = (method: string) => {
-    switch (method) {
-      case 'immediate': return <TrendingUpIcon />;
-      case 'days': return <ScheduleIcon />;
-      case 'date': return <CalendarIcon />;
-      default: return <TimelineIcon />;
-    }
-  };
+  const getMethodIcon = React.useCallback((method: string) => {
+    return methodIcons[method as keyof typeof methodIcons] || methodIcons.default;
+  }, [methodIcons]);
 
-  const getMethodColor = (method: string) => {
-    switch (method) {
-      case 'immediate': return '#00FFC6';
-      case 'days': return '#FFD600';
-      case 'date': return '#FF6B6B';
-      default: return '#6C63FF';
-    }
-  };
+  const getMethodColor = React.useCallback((method: string) => {
+    return methodColors[method as keyof typeof methodColors] || methodColors.default;
+  }, [methodColors]);
 
   return (
     <Box sx={{ width: '100%' }}>
@@ -492,6 +497,6 @@ const DripContentStep: React.FC<DripContentStepProps> = ({
       )}
     </Box>
   );
-};
+});
 
 export default DripContentStep; 

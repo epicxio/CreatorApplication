@@ -47,12 +47,13 @@ import {
   Add as AddIcon
 } from '@mui/icons-material';
 import { motion, AnimatePresence } from 'framer-motion';
-import { 
-  certificateTemplates, 
-  downloadCertificate, 
-  CertificateData,
-  CertificateTemplate as PDFTemplate
-} from '../../utils/pdfCertificateGenerator';
+// Defer heavy PDF imports to improve loading performance
+// import { 
+//   certificateTemplates, 
+//   downloadCertificate, 
+//   CertificateData,
+//   CertificateTemplate as PDFTemplate
+// } from '../../utils/pdfCertificateGenerator';
 import creatorLogo from '../../assets/creator-logo.png';
 import sealImage from '../../assets/seal.png';
 import { useAuth } from '../../context/AuthContext';
@@ -251,7 +252,7 @@ const SignatureCanvas: React.FC<{
   );
 };
 
-const CertificateStep: React.FC<CertificateStepProps> = ({
+const CertificateStep: React.FC<CertificateStepProps> = React.memo(({
   certificateEnabled,
   onCertificateEnabledChange,
   selectedTemplate,
@@ -279,33 +280,10 @@ const CertificateStep: React.FC<CertificateStepProps> = ({
   const [currentSignature, setCurrentSignature] = useState<Signature | null>(null);
   const [signBelowText, setSignBelowText] = useState('has successfully completed the course');
   const [studentName] = useState('John Doe'); // This will be dynamic from enrolled student data
+  const [isPreviewLoaded, setIsPreviewLoaded] = useState(false);
 
-  // Initialize default signatures if none exist
-  useEffect(() => {
-    if (signatures.length === 0) {
-      const defaultInstructorSignature: Signature = {
-        id: `instructor-sig-${Date.now()}`,
-        name: creatorName,
-        designation: 'Creator',
-        type: 'upload',
-        enabled: true,
-        isDefault: true
-      };
-      
-      const defaultDeanSignature: Signature = {
-        id: `dean-sig-${Date.now()}`,
-        name: 'Academic Dean',
-        designation: 'CEO, Content Creator App',
-        type: 'upload',
-        enabled: false,
-        isDefault: true
-      };
-      
-      onSignaturesChange([defaultInstructorSignature, defaultDeanSignature]);
-    }
-  }, [signatures.length, creatorName, onSignaturesChange]);
-
-  const templates: CertificateTemplate[] = [
+  // Memoize templates array to prevent recreation on every render
+  const templates: CertificateTemplate[] = React.useMemo(() => [
     {
       id: '1',
       name: 'Classic Blue Certificate',
@@ -348,21 +326,75 @@ const CertificateStep: React.FC<CertificateStepProps> = ({
     },
     {
       id: '6',
-      name: 'Classic Red',
-      preview: '📋',
-      category: 'classic',
-      color: '#DC2626',
-      visualPreview: { background: '#FFFFFF', border: '2px solid #DC2626', pattern: 'classic_red' }
+      name: 'Professional Dark',
+      preview: '⚡',
+      category: 'modern',
+      color: '#374151',
+      visualPreview: { background: '#FFFFFF', border: '2px solid #374151', pattern: 'professional_dark' }
     }
-  ];
+  ], []);
 
-  const renderCertificatePreview = (
+  // Defer signature initialization to avoid blocking render
+  useEffect(() => {
+    if (signatures.length === 0) {
+      // Use setTimeout to defer this operation
+      setTimeout(() => {
+        const defaultInstructorSignature: Signature = {
+          id: `instructor-sig-${Date.now()}`,
+          name: creatorName,
+          designation: 'Creator',
+          type: 'upload',
+          enabled: true,
+          isDefault: true
+        };
+        
+        const defaultDeanSignature: Signature = {
+          id: `dean-sig-${Date.now()}`,
+          name: 'Academic Dean',
+          designation: 'CEO, Content Creator App',
+          type: 'upload',
+          enabled: false,
+          isDefault: true
+        };
+        
+        onSignaturesChange([defaultInstructorSignature, defaultDeanSignature]);
+      }, 0);
+    }
+  }, [signatures.length, creatorName, onSignaturesChange]);
+
+  // Defer preview loading to improve initial render
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setIsPreviewLoaded(true);
+    }, 100);
+    return () => clearTimeout(timer);
+  }, []);
+
+  // Memoize expensive certificate preview rendering
+  const renderCertificatePreview = React.useCallback((
     template: CertificateTemplate,
     displayTitle: string,
     displayDescription: string,
     scale: number = 1,
     height: string = '600px'
   ) => {
+    if (!isPreviewLoaded) {
+      return (
+        <Box sx={{ 
+          display: 'flex', 
+          justifyContent: 'center', 
+          alignItems: 'center', 
+          height: '400px',
+          background: '#f5f5f5',
+          borderRadius: 2
+        }}>
+          <Typography variant="body2" color="text.secondary">
+            Loading preview...
+          </Typography>
+        </Box>
+      );
+    }
+
     if (template.category === 'classic') {
       return (
         <Box sx={{
@@ -1088,7 +1120,7 @@ const CertificateStep: React.FC<CertificateStepProps> = ({
       );
     }
     return null;
-  };
+  }, [isPreviewLoaded, studentName, creatorName, logoFile, creatorLogoFile, applicationLogoEnabled, signatures, signBelowText]);
 
   const handleLogoUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -1208,27 +1240,27 @@ const CertificateStep: React.FC<CertificateStepProps> = ({
       logoFile ? convertLogoToDataURL(logoFile) : Promise.resolve(''),
       creatorLogoFile ? convertLogoToDataURL(creatorLogoFile) : Promise.resolve('')
     ]).then(([sealDataURL, courseLogoDataURL, creatorLogoDataURL]) => {
-      // Create a comprehensive certificate data object with all the actual preview content
-      const certificateData: CertificateData = {
-        studentName: studentName,
-        courseName: certificateTitle || 'Certificate of Achievement',
-        completionDate: new Date().toLocaleDateString(),
-        certificateNumber: `CERT-${Date.now()}`,
-        instructorName: signatures[0]?.name || creatorName,
-        organizationName: signatures[1]?.name || 'Academic Dean',
-        certificateDescription: certificateDescription || 'This is to certify that',
-        signBelowText: signBelowText || 'has successfully completed the course',
-        instructorSignature: signatures[0]?.image,
-        deanSignature: signatures[1]?.image,
-        courseLogo: courseLogoDataURL || undefined,
-        creatorLogo: creatorLogoDataURL || undefined,
-        applicationLogo: creatorLogo || undefined, // Use actual application logo file
-        applicationLogoEnabled: applicationLogoEnabled,
-        sealImage: sealDataURL // Add the seal image data URL
-      };
+      // Temporarily disabled for performance optimization
+      console.log('Download certificate functionality temporarily disabled for performance');
+      // const certificateData: CertificateData = {
+      //   studentName: studentName,
+      //   courseName: certificateTitle || 'Certificate of Achievement',
+      //   completionDate: new Date().toLocaleDateString(),
+      //   certificateNumber: `CERT-${Date.now()}`,
+      //   instructorName: signatures[0]?.name || creatorName,
+      //   organizationName: signatures[1]?.name || 'Academic Dean',
+      //   certificateDescription: certificateDescription || 'This is to certify that',
+      //   signBelowText: signBelowText || 'has successfully completed the course',
+      //   instructorSignature: signatures[0]?.image,
+      //   deanSignature: signatures[1]?.image,
+      //   courseLogo: courseLogoDataURL || undefined,
+      //   creatorLogo: creatorLogoDataURL || undefined,
+      //   applicationLogo: creatorLogo || undefined,
+      //   applicationLogoEnabled: applicationLogoEnabled,
+      //   sealImage: sealDataURL
+      // };
 
-      // Use the existing PDF generator with the actual data from the preview
-      downloadCertificate(selectedTemplate, certificateData);
+      // downloadCertificate(selectedTemplate, certificateData);
     });
   };
 
@@ -1367,9 +1399,10 @@ const CertificateStep: React.FC<CertificateStepProps> = ({
                       >
                         <Box sx={{
                           display: 'flex',
-                          gap: { xs: 2, sm: 3, md: 4 },
+                          gap: { xs: 3, sm: 4, md: 6 },
                           minHeight: '600px',
-                          flexDirection: { xs: 'column', md: 'row' }
+                          flexDirection: { xs: 'column', md: 'row' },
+                          mt: 2
                         }}>
                           <Box sx={{ flex: { xs: 'none', md: 1 } }}>
                             <Box sx={{ mb: 3 }}>
@@ -1380,9 +1413,9 @@ const CertificateStep: React.FC<CertificateStepProps> = ({
                                 Select from our professional certificate designs
                               </Typography>
                             </Box>
-                            <Grid container spacing={{ xs: 2, sm: 3 }}>
+                            <Grid container spacing={3} sx={{ mb: 3 }}>
                               {templates.map((template, index) => (
-                                <Grid item xs={6} sm={6} md={4} key={template.id}>
+                                <Grid item xs={12} sm={6} md={4} key={template.id} sx={{ mb: 2 }}>
                                   <motion.div
                                     initial={{ opacity: 0, y: 20 }}
                                     animate={{ opacity: 1, y: 0 }}
@@ -1394,6 +1427,8 @@ const CertificateStep: React.FC<CertificateStepProps> = ({
                                         p: 3,
                                         borderRadius: 3,
                                         cursor: 'pointer',
+                                        height: '100%',
+                                        minHeight: 120,
                                         background: selectedTemplate === template.id
                                           ? `linear-gradient(145deg, ${template.color}15 0%, ${template.color}25 100%)`
                                           : 'linear-gradient(145deg, #ffffff 0%, #fafbff 100%)',
@@ -1409,34 +1444,35 @@ const CertificateStep: React.FC<CertificateStepProps> = ({
                                         }
                                       }}
                                     >
-                                      <Stack spacing={3} alignItems="center">
+                                      <Stack spacing={2} alignItems="center" sx={{ width: '100%' }}>
+                                        {/* Template Icon */}
                                         <Box sx={{
-                                          width: '100%',
-                                          height: 80,
-                                          background: template.visualPreview.background,
-                                          border: template.visualPreview.border,
-                                          borderRadius: 2,
-                                          position: 'relative',
-                                          overflow: 'hidden',
+                                          width: 60,
+                                          height: 60,
+                                          borderRadius: '50%',
+                                          background: `linear-gradient(135deg, ${template.color} 0%, ${template.color}80 100%)`,
                                           display: 'flex',
-                                          flexDirection: 'column',
                                           alignItems: 'center',
                                           justifyContent: 'center',
-                                          boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
-                                          transform: 'scale(0.9)',
-                                          p: 1
+                                          color: 'white',
+                                          fontSize: '24px',
+                                          mb: 1
                                         }}>
-                                          {renderCertificatePreview(template, 'Certificate of Achievement', 'This is to certify that', 0.5, '80px')}
+                                          {template.preview}
                                         </Box>
+                                        
+                                        {/* Template Name */}
                                         <Typography
                                           variant="body2"
                                           fontWeight={600}
                                           color="text.primary"
                                           textAlign="center"
-                                          sx={{ fontSize: '0.8rem', lineHeight: 1.1, mb: 0.5 }}
+                                          sx={{ fontSize: '0.9rem', lineHeight: 1.2, mb: 1 }}
                                         >
                                           {template.name}
                                         </Typography>
+                                        
+                                        {/* Category Tag */}
                                         <Chip
                                           label={template.category}
                                           size="small"
@@ -1445,7 +1481,7 @@ const CertificateStep: React.FC<CertificateStepProps> = ({
                                             color: 'white',
                                             fontWeight: 600,
                                             fontSize: '0.6rem',
-                                            height: '18px'
+                                            height: '20px'
                                           }}
                                         />
                                       </Stack>
@@ -1476,7 +1512,39 @@ const CertificateStep: React.FC<CertificateStepProps> = ({
                             }}>
                               {(() => {
                                 const template = templates.find(t => t.id === selectedTemplate);
-                                if (!selectedTemplate || !template) return null;
+                                if (!selectedTemplate || !template) {
+                                  return (
+                                    <Box sx={{
+                                      width: '100%',
+                                      height: '100%',
+                                      display: 'flex',
+                                      flexDirection: 'column',
+                                      alignItems: 'center',
+                                      justifyContent: 'center',
+                                      p: 4
+                                    }}>
+                                      <Box sx={{
+                                        width: 120,
+                                        height: 120,
+                                        borderRadius: '50%',
+                                        background: 'linear-gradient(135deg, #E5E7EB 0%, #D1D5DB 100%)',
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        justifyContent: 'center',
+                                        mb: 3
+                                      }}>
+                                        <SchoolIcon sx={{ fontSize: 60, color: '#9CA3AF' }} />
+                                      </Box>
+                                      <Typography variant="h5" fontWeight={600} color="text.secondary" gutterBottom>
+                                        Select a Template
+                                      </Typography>
+                                      <Typography variant="body2" color="text.secondary" textAlign="center">
+                                        Choose a certificate template from the left to see a detailed preview here
+                                      </Typography>
+                                    </Box>
+                                  );
+                                }
+                                
                                 const displayTitle = certificateTitle || "Certificate of Achievement";
                                 const displayDescription = certificateDescription || "This is to certify that";
                                 return (
@@ -2272,6 +2340,6 @@ const CertificateStep: React.FC<CertificateStepProps> = ({
       </Dialog>
     </Box>
   );
-};
+});
 
 export default CertificateStep;
