@@ -42,8 +42,8 @@ export const GlobalLayout: React.FC<GlobalLayoutProps> = ({ children }) => {
 
   const supportUser: ChatUser = {
     id: 'support-1',
-    name: 'Support Team',
-    role: 'admin'
+    name: 'Sarah Johnson',
+    role: 'support'
   };
 
   return (
@@ -87,6 +87,15 @@ export const GlobalLayout: React.FC<GlobalLayoutProps> = ({ children }) => {
               } catch (error) {
                 console.error('Failed to schedule chat:', error);
               }
+            }}
+            onCreateChannel={(channelData) => {
+              console.log('Create channel:', channelData);
+            }}
+            onJoinChannel={(channelId) => {
+              console.log('Join channel:', channelId);
+            }}
+            onStartDM={(userId) => {
+              console.log('Start DM with:', userId);
             }}
           />
         )}

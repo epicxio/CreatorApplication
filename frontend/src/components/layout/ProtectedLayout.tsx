@@ -80,8 +80,8 @@ const ProtectedLayout: React.FC = () => {
             }}
             otherUser={{
               id: 'support-1',
-              name: 'Support Team',
-              role: 'admin'
+              name: 'Sarah Johnson',
+              role: 'support'
             }}
             chatSettings={{
               canInitiate: true,
@@ -98,6 +98,15 @@ const ProtectedLayout: React.FC = () => {
             }}
             onScheduleChat={(scheduledTime) => {
               console.log('Global chat scheduled:', scheduledTime);
+            }}
+            onCreateChannel={(channelData) => {
+              console.log('Create channel:', channelData);
+            }}
+            onJoinChannel={(channelId) => {
+              console.log('Join channel:', channelId);
+            }}
+            onStartDM={(userId) => {
+              console.log('Start DM with:', userId);
             }}
           />
         )}

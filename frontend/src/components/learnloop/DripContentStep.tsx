@@ -42,31 +42,29 @@ interface DripMethod {
   action?: string | number;
 }
 
-interface DripContentStepProps {
-  dripEnabled: boolean;
-  onDripEnabledChange: (enabled: boolean) => void;
-  dripMethods: DripMethod[];
-  onDripMethodsChange: (methods: DripMethod[]) => void;
-  displayOption: 'title' | 'titleAndLessons' | 'hide';
-  onDisplayOptionChange: (option: 'title' | 'titleAndLessons' | 'hide') => void;
-  hideUnlockDate: boolean;
-  onHideUnlockDateChange: (hide: boolean) => void;
-  sendCommunication: boolean;
-  onSendCommunicationChange: (send: boolean) => void;
-}
-
-const DripContentStep: React.FC<DripContentStepProps> = React.memo(({
-  dripEnabled,
-  onDripEnabledChange,
-  dripMethods,
-  onDripMethodsChange,
-  displayOption,
-  onDisplayOptionChange,
-  hideUnlockDate,
-  onHideUnlockDateChange,
-  sendCommunication,
-  onSendCommunicationChange
-}) => {
+const DripContentStep: React.FC = React.memo(() => {
+  // Drip Content state
+  const [dripEnabled, setDripEnabled] = useState(false);
+  const [dripMethods, setDripMethods] = useState<DripMethod[]>([
+    {
+      id: 'Introduction',
+      method: 'immediate',
+      action: undefined
+    },
+    {
+      id: 'Core Concepts',
+      method: 'days',
+      action: 7
+    },
+    {
+      id: 'Advanced Topics',
+      method: 'date',
+      action: ''
+    }
+  ]);
+  const [displayOption, setDisplayOption] = useState<'title' | 'titleAndLessons' | 'hide'>('titleAndLessons');
+  const [hideUnlockDate, setHideUnlockDate] = useState(false);
+  const [sendCommunication, setSendCommunication] = useState(false);
   const [selectedDate, setSelectedDate] = useState<string>('');
 
   // Memoize expensive computations
@@ -90,15 +88,15 @@ const DripContentStep: React.FC<DripContentStepProps> = React.memo(({
         ? { ...m, method, action: method === 'immediate' ? undefined : method === 'days' ? 1 : '' }
         : m
     );
-    onDripMethodsChange(updatedMethods);
-  }, [dripMethods, onDripMethodsChange]);
+    setDripMethods(updatedMethods);
+  }, [dripMethods]);
 
   const handleActionChange = React.useCallback((moduleId: string, action: string | number) => {
     const updatedMethods = dripMethods.map(m => 
       m.id === moduleId ? { ...m, action } : m
     );
-    onDripMethodsChange(updatedMethods);
-  }, [dripMethods, onDripMethodsChange]);
+    setDripMethods(updatedMethods);
+  }, [dripMethods]);
 
   const getMethodIcon = React.useCallback((method: string) => {
     return methodIcons[method as keyof typeof methodIcons] || methodIcons.default;
@@ -118,9 +116,9 @@ const DripContentStep: React.FC<DripContentStepProps> = React.memo(({
       >
         <Box sx={{ 
           background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-          borderRadius: 4,
-          p: 4,
-          mb: 4,
+          borderRadius: 3,
+          p: 3,
+          mb: 3,
           position: 'relative',
           overflow: 'hidden'
         }}>
@@ -171,13 +169,13 @@ const DripContentStep: React.FC<DripContentStepProps> = React.memo(({
       >
         <Card sx={{ 
           background: 'linear-gradient(145deg, #ffffff 0%, #f8f9ff 100%)',
-          borderRadius: 3,
-          boxShadow: '0 8px 32px rgba(108, 99, 255, 0.1)',
+          borderRadius: 2,
+          boxShadow: '0 4px 16px rgba(108, 99, 255, 0.08)',
           border: '1px solid rgba(108, 99, 255, 0.1)',
-          mb: 4
+          mb: 3
         }}>
-          <CardContent sx={{ p: 4 }}>
-            <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 3 }}>
+          <CardContent sx={{ p: 3 }}>
+            <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 2 }}>
               <Box>
                 <Typography variant="h4" fontWeight={700} color="#6C63FF" gutterBottom>
                   Progressive Content Release
@@ -189,7 +187,7 @@ const DripContentStep: React.FC<DripContentStepProps> = React.memo(({
               <Box sx={{ textAlign: 'center' }}>
                 <Switch
                   checked={dripEnabled}
-                  onChange={(e) => onDripEnabledChange(e.target.checked)}
+                  onChange={(e) => setDripEnabled(e.target.checked)}
                   sx={{
                     '& .MuiSwitch-switchBase.Mui-checked': {
                       color: '#00FFC6',
@@ -214,33 +212,35 @@ const DripContentStep: React.FC<DripContentStepProps> = React.memo(({
                 animate={{ opacity: 1, height: 'auto' }}
                 transition={{ duration: 0.5 }}
               >
-                <Grid container spacing={3}>
+                <Grid container spacing={2}>
                   {dripMethods.map((dripMethod, index) => (
-                    <Grid item xs={12} md={6} key={dripMethod.id}>
+                    <Grid item xs={12} md={4} key={dripMethod.id}>
                       <motion.div
                         initial={{ opacity: 0, x: -20 }}
                         animate={{ opacity: 1, x: 0 }}
                         transition={{ duration: 0.5, delay: index * 0.1 }}
                       >
                         <Paper sx={{ 
-                          p: 3, 
-                          borderRadius: 3,
+                          p: 2.5, 
+                          borderRadius: 2,
                           background: 'linear-gradient(145deg, #ffffff 0%, #fafbff 100%)',
-                          border: `2px solid ${getMethodColor(dripMethod.method)}20`,
+                          border: `1px solid ${getMethodColor(dripMethod.method)}30`,
                           position: 'relative',
-                          overflow: 'hidden'
+                          overflow: 'hidden',
+                          height: '100%',
+                          minHeight: 200
                         }}>
                           <Box sx={{
                             position: 'absolute',
                             top: 0,
                             left: 0,
                             width: '100%',
-                            height: 4,
+                            height: 3,
                             background: `linear-gradient(90deg, ${getMethodColor(dripMethod.method)} 0%, ${getMethodColor(dripMethod.method)}80 100%)`
                           }} />
                           
-                          <Stack spacing={3}>
-                            <Stack direction="row" alignItems="center" spacing={2}>
+                          <Stack spacing={2}>
+                            <Stack direction="row" alignItems="center" spacing={1.5}>
                               <Box sx={{ 
                                 color: getMethodColor(dripMethod.method),
                                 display: 'flex',
@@ -248,12 +248,12 @@ const DripContentStep: React.FC<DripContentStepProps> = React.memo(({
                               }}>
                                 {getMethodIcon(dripMethod.method)}
                               </Box>
-                              <Typography variant="h6" fontWeight={600}>
+                              <Typography variant="subtitle1" fontWeight={600}>
                                 Module {index + 1}: {dripMethod.id}
                               </Typography>
                             </Stack>
 
-                            <FormControl fullWidth>
+                            <FormControl fullWidth size="small">
                               <InputLabel>Release Strategy</InputLabel>
                               <Select
                                 value={dripMethod.method}
@@ -270,50 +270,51 @@ const DripContentStep: React.FC<DripContentStepProps> = React.memo(({
                                 <MenuItem value="immediate">
                                   <Stack direction="row" spacing={1} alignItems="center">
                                     <TrendingUpIcon sx={{ color: '#00FFC6' }} />
-                                    <Typography>Instant Access</Typography>
+                                    <Typography variant="body2">Instant Access</Typography>
                                   </Stack>
                                 </MenuItem>
                                 <MenuItem value="days">
                                   <Stack direction="row" spacing={1} alignItems="center">
                                     <ScheduleIcon sx={{ color: '#FFD600' }} />
-                                    <Typography>Time-Based Release</Typography>
+                                    <Typography variant="body2">Time-Based Release</Typography>
                                   </Stack>
                                 </MenuItem>
                                 <MenuItem value="date">
                                   <Stack direction="row" spacing={1} alignItems="center">
                                     <CalendarIcon sx={{ color: '#FF6B6B' }} />
-                                    <Typography>Date-Based Release</Typography>
+                                    <Typography variant="body2">Date-Based Release</Typography>
                                   </Stack>
                                 </MenuItem>
                               </Select>
                             </FormControl>
 
                             {dripMethod.method !== 'immediate' && (
-                              <Box sx={{ mt: 2 }}>
-                                <Typography variant="subtitle2" color="text.secondary" gutterBottom>
+                              <Box>
+                                <Typography variant="caption" color="text.secondary" display="block" sx={{ mb: 1 }}>
                                   {dripMethod.method === 'days' ? 'Days After Enrollment' : 'Release Date & Time'}
                                 </Typography>
                                 <TextField
                                   type={dripMethod.method === 'days' ? 'number' : 'datetime-local'}
                                   value={dripMethod.action || ''}
                                   onChange={(e) => handleActionChange(dripMethod.id, dripMethod.method === 'days' ? parseInt(e.target.value) || 1 : e.target.value)}
-                                                                     fullWidth
-                                   placeholder={dripMethod.method === 'days' ? 'Enter number of days' : 'Select date and time'}
+                                  fullWidth
+                                  size="small"
+                                  placeholder={dripMethod.method === 'days' ? 'Enter number of days' : 'Select date and time'}
                                   InputProps={{
                                     endAdornment: dripMethod.method === 'days' ? 
-                                      <ScheduleIcon sx={{ color: 'text.secondary' }} /> :
-                                      <CalendarIcon sx={{ color: 'text.secondary' }} />
+                                      <ScheduleIcon sx={{ color: 'text.secondary', fontSize: 20 }} /> :
+                                      <CalendarIcon sx={{ color: 'text.secondary', fontSize: 20 }} />
                                   }}
                                   sx={{
                                     '& .MuiOutlinedInput-root': {
-                                      height: 56,
+                                      height: 48,
                                       '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
                                         borderColor: getMethodColor(dripMethod.method),
                                         borderWidth: 2,
                                       },
                                     },
                                     '& .MuiInputBase-input': {
-                                      fontSize: '1rem',
+                                      fontSize: '0.875rem',
                                     }
                                   }}
                                 />
@@ -340,18 +341,18 @@ const DripContentStep: React.FC<DripContentStepProps> = React.memo(({
         >
           <Card sx={{ 
             background: 'linear-gradient(145deg, #ffffff 0%, #f8f9ff 100%)',
-            borderRadius: 3,
-            boxShadow: '0 8px 32px rgba(108, 99, 255, 0.1)',
+            borderRadius: 2,
+            boxShadow: '0 4px 16px rgba(108, 99, 255, 0.08)',
             border: '1px solid rgba(108, 99, 255, 0.1)',
-            mb: 4
+            mb: 3
           }}>
-            <CardContent sx={{ p: 4 }}>
-              <Typography variant="h5" fontWeight={700} color="#6C63FF" gutterBottom>
+            <CardContent sx={{ p: 3 }}>
+              <Typography variant="h6" fontWeight={700} color="#6C63FF" gutterBottom>
                 <VisibilityIcon sx={{ mr: 1, verticalAlign: 'middle' }} />
                 Content Visibility Strategy
               </Typography>
               
-              <Grid container spacing={2} sx={{ mt: 2 }}>
+              <Grid container spacing={2} sx={{ mt: 1.5 }}>
                 {[
                   { value: 'title', label: 'Module Titles Only', icon: <InfoIcon />, color: '#6C63FF' },
                   { value: 'titleAndLessons', label: 'Full Module Preview', icon: <VisibilityIcon />, color: '#00FFC6' },
@@ -363,7 +364,7 @@ const DripContentStep: React.FC<DripContentStepProps> = React.memo(({
                       whileTap={{ scale: 0.98 }}
                     >
                       <Paper
-                        onClick={() => onDisplayOptionChange(option.value as any)}
+                        onClick={() => setDisplayOption(option.value as any)}
                         sx={{
                           p: 3,
                           borderRadius: 3,
@@ -436,7 +437,7 @@ const DripContentStep: React.FC<DripContentStepProps> = React.memo(({
                     </Box>
                     <Switch
                       checked={hideUnlockDate}
-                      onChange={(e) => onHideUnlockDateChange(e.target.checked)}
+                                                      onChange={(e) => setHideUnlockDate(e.target.checked)}
                       sx={{
                         '& .MuiSwitch-switchBase.Mui-checked': {
                           color: '#FF6B6B',
@@ -475,7 +476,7 @@ const DripContentStep: React.FC<DripContentStepProps> = React.memo(({
                     </Box>
                     <Switch
                       checked={sendCommunication}
-                      onChange={(e) => onSendCommunicationChange(e.target.checked)}
+                                                      onChange={(e) => setSendCommunication(e.target.checked)}
                       sx={{
                         '& .MuiSwitch-switchBase.Mui-checked': {
                           color: '#00FFC6',
